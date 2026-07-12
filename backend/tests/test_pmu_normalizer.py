@@ -46,3 +46,14 @@ def test_normalize_course_reunion_date_uses_local_racing_day(pmu_programme_sampl
     course = normalize_course(raw_reunion, raw_course)
     # dateReunion 1783807200000 = 2026-07-11 22:00 UTC = 2026-07-12 00:00 Paris (offset +2h)
     assert course.reunion.date.isoformat() == "2026-07-12"
+
+
+def test_normalize_partants_trot_maps_stats(pmu_participants_trot_sample):
+    partants = normalize_partants(pmu_participants_trot_sample["participants"], course_terminee=True)
+    igor = next(p for p in partants if p.nom_cheval == "IGOR THEPOL")
+    assert igor.age == 8
+    assert igor.nombre_courses == 46
+    assert igor.nombre_victoires == 2
+    assert igor.nombre_places == 24
+    assert igor.gains_carriere == 3416500
+    assert igor.gains_annee_en_cours == 33000

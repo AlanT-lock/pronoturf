@@ -93,6 +93,12 @@ def normalize_partants(raw_participants: list[dict], course_terminee: bool) -> l
                 statut="partant" if raw["statut"] == "PARTANT" else "non_partant",
                 cotes=cotes,
                 position_arrivee=raw.get("ordreArrivee"),
+                age=raw.get("age"),
+                nombre_courses=raw.get("nombreCourses"),
+                nombre_victoires=raw.get("nombreVictoires"),
+                nombre_places=raw.get("nombrePlaces"),
+                gains_carriere=(raw.get("gainsParticipant") or {}).get("gainsCarriere"),
+                gains_annee_en_cours=(raw.get("gainsParticipant") or {}).get("gainsAnneeEnCours"),
             )
         )
     return partants

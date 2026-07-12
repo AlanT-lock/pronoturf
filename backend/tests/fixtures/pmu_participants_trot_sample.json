@@ -12,6 +12,11 @@
       "musique": "7aDm5a(25)6mDm9m3mDm9m",
       "reductionKilometrique": 78300,
       "ordreArrivee": 2,
+      "age": 8,
+      "nombreCourses": 46,
+      "nombreVictoires": 2,
+      "nombrePlaces": 24,
+      "gainsParticipant": {"gainsCarriere": 3416500, "gainsAnneeEnCours": 33000},
       "dernierRapportDirect": {"rapport": 62.0, "typeRapport": "DIRECT"},
       "dernierRapportReference": {"rapport": 45.0, "typeRapport": "REFERENCE"}
     },

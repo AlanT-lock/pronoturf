@@ -51,3 +51,9 @@ class PartantNormalized(BaseModel):
     statut: StatutPartant
     cotes: list[CoteNormalized]
     position_arrivee: Optional[int] = None
+    age: Optional[int] = None
+    nombre_courses: Optional[int] = None
+    nombre_victoires: Optional[int] = None
+    nombre_places: Optional[int] = None
+    gains_carriere: Optional[float] = None
+    gains_annee_en_cours: Optional[float] = None
