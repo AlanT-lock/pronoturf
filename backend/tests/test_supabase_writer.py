@@ -93,3 +93,9 @@ def test_save_course_import_writes_all_tables_and_returns_ids():
     ]
     assert result["course_id"] is not None
     assert len(result["partant_ids"]) == 1
+
+    # Verify rider role is derived from discipline (plat -> jockey)
+    intervenant_rows = [row for name, row in fake_client.calls if name == "intervenants"]
+    roles_par_nom = {row["nom"]: row["role"] for row in intervenant_rows}
+    assert roles_par_nom["M.BARZALONA"] == "jockey"
+    assert roles_par_nom["FH.GRAFFARD (S)"] == "entraineur"

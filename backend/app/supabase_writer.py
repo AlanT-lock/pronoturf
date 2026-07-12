@@ -52,6 +52,8 @@ class SupabaseWriter:
             .data[0]
         )
 
+        rider_role = "driver" if course.discipline == "trot_attele" else "jockey"
+
         partant_ids = []
         for partant in partants:
             cheval_row = (
@@ -73,7 +75,7 @@ class SupabaseWriter:
                 driver_jockey_id = (
                     self._client.table("intervenants")
                     .upsert(
-                        {"nom": partant.driver_jockey_nom, "role": "driver"},
+                        {"nom": partant.driver_jockey_nom, "role": rider_role},
                         on_conflict="nom,role",
                     )
                     .execute()
