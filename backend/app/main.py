@@ -3,10 +3,12 @@ from pydantic import BaseModel
 
 from app.pmu_client import fetch_participants, fetch_programme
 from app.pmu_normalizer import find_course_in_programme, normalize_course, normalize_partants
+from app.scoring.routes import router as scoring_router
 from app.supabase_client import get_supabase_client
 from app.supabase_writer import SupabaseWriter
 
 app = FastAPI(title="pronoturf")
+app.include_router(scoring_router)
 
 
 @app.get("/health")
