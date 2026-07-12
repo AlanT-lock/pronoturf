@@ -1,5 +1,3 @@
-import pytest
-
 from app.scoring.musique import forme_score, parse_musique
 
 
