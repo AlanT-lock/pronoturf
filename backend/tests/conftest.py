@@ -14,3 +14,8 @@ def pmu_programme_sample() -> dict:
 @pytest.fixture
 def pmu_participants_plat_sample() -> dict:
     return json.loads((FIXTURES_DIR / "pmu_participants_plat_sample.json").read_text())
+
+
+@pytest.fixture
+def pmu_participants_trot_sample() -> dict:
+    return json.loads((FIXTURES_DIR / "pmu_participants_trot_sample.json").read_text())

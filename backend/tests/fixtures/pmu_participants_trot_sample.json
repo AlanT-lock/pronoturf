@@ -1,0 +1,34 @@
+{
+  "participants": [
+    {
+      "idCheval": "IGOR THEPOL-LA DIVA DE RIEZ-URIEL SPEED",
+      "nom": "IGOR THEPOL",
+      "numPmu": 1,
+      "sexe": "HONGRES",
+      "statut": "PARTANT",
+      "entraineur": "P. BILLON",
+      "driver": "D. RABILLER",
+      "deferre": "DEFERRE_POSTERIEURS",
+      "musique": "7aDm5a(25)6mDm9m3mDm9m",
+      "reductionKilometrique": 78300,
+      "ordreArrivee": 2,
+      "dernierRapportDirect": {"rapport": 62.0, "typeRapport": "DIRECT"},
+      "dernierRapportReference": {"rapport": 45.0, "typeRapport": "REFERENCE"}
+    },
+    {
+      "idCheval": "JAZZ KERODA-ULTIMA KERODA-SAXO DE VANDEL",
+      "nom": "JAZZ KERODA",
+      "numPmu": 2,
+      "sexe": "HONGRES",
+      "statut": "PARTANT",
+      "entraineur": "A. DAVID",
+      "driver": "C. BATY",
+      "deferre": "DEFERRE_POSTERIEURS",
+      "musique": "(25)0a0a5a(24)7a3a1a4a2a",
+      "reductionKilometrique": 78400,
+      "ordreArrivee": 4,
+      "dernierRapportDirect": {"rapport": 11.0, "typeRapport": "DIRECT"},
+      "dernierRapportReference": {"rapport": 25.0, "typeRapport": "REFERENCE"}
+    }
+  ]
+}
