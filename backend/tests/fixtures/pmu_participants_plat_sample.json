@@ -1,0 +1,30 @@
+{
+  "participants": [
+    {
+      "idCheval": "MAJNOUN-MALICIEUSE-WOOTTON BASSETT",
+      "nom": "MAJNOUN",
+      "numPmu": 1,
+      "sexe": "MALES",
+      "statut": "PARTANT",
+      "entraineur": "FH.GRAFFARD (S)",
+      "driver": "M.BARZALONA",
+      "handicapPoids": 580,
+      "dernierRapportDirect": {"rapport": 2.3, "typeRapport": "DIRECT"},
+      "dernierRapportReference": {"rapport": 1.4, "typeRapport": "REFERENCE"},
+      "ordreArrivee": 3
+    },
+    {
+      "idCheval": "TRIPOLITAIN-SYMPOSIUM-BLUE POINT",
+      "nom": "TRIPOLITAIN",
+      "numPmu": 2,
+      "sexe": "MALES",
+      "statut": "PARTANT",
+      "entraineur": "H.GHABRI",
+      "driver": "C.LECOEUVRE",
+      "handicapPoids": 580,
+      "dernierRapportDirect": {"rapport": 5.7, "typeRapport": "DIRECT"},
+      "dernierRapportReference": {"rapport": 4.9, "typeRapport": "REFERENCE"},
+      "ordreArrivee": 5
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "programme": {
+    "reunions": [
+      {
+        "numOfficiel": 1,
+        "dateReunion": 1783807200000,
+        "hippodrome": {"code": "DEA", "libelleCourt": "DEAUVILLE", "libelleLong": "HIPPODROME DE DEAUVILLE"},
+        "pays": {"code": "FRA", "libelle": "FRANCE"},
+        "courses": [
+          {
+            "numOrdre": 1,
+            "heureDepart": 1783858620000,
+            "libelle": "HARAS DE FRESNAY-LE-BUFFARD PRIX DE TANCARVILLE",
+            "distance": 1200,
+            "discipline": "PLAT",
+            "specialite": "PLAT",
+            "categorieParticularite": "COURSE_A_CONDITIONS",
+            "arriveeDefinitive": true
+          }
+        ]
+      }
+    ]
+  }
+}
