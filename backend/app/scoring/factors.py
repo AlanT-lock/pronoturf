@@ -4,8 +4,6 @@ Chaque facteur disponible au Plan 2 est calculé pour tous les partants d'une co
 normalisé relativement à la course (min-max ou inverse borné) pour être comparable.
 """
 
-from typing import Optional
-
 from app.scoring.musique import forme_score
 
 # Score de déferrage (trot) : plus déferré = léger avantage supposé.
