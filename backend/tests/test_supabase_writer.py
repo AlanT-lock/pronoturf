@@ -23,6 +23,7 @@ class FakeTable:
 
     def upsert(self, payload, on_conflict=None):
         self._payload = payload
+        self._client.last_on_conflict[self._name] = on_conflict
         return self
 
     def execute(self):
@@ -35,6 +36,7 @@ class FakeTable:
 class FakeSupabaseClient:
     def __init__(self):
         self.calls = []
+        self.last_on_conflict = {}
 
     def table(self, name):
         return FakeTable(self, name)
@@ -70,6 +72,12 @@ def _sample_partants() -> list[PartantNormalized]:
             statut="partant",
             cotes=[CoteNormalized(type_capture="finale", valeur=2.3, capture_at=datetime.now(tz=timezone.utc))],
             position_arrivee=3,
+            age=8,
+            nombre_courses=46,
+            nombre_victoires=2,
+            nombre_places=24,
+            gains_carriere=3416500,
+            gains_annee_en_cours=33000,
         )
     ]
 
@@ -99,3 +107,17 @@ def test_save_course_import_writes_all_tables_and_returns_ids():
     roles_par_nom = {row["nom"]: row["role"] for row in intervenant_rows}
     assert roles_par_nom["M.BARZALONA"] == "jockey"
     assert roles_par_nom["FH.GRAFFARD (S)"] == "entraineur"
+
+
+def test_save_course_import_writes_partant_stats_and_cote_on_conflict():
+    fake_client = FakeSupabaseClient()
+    writer = SupabaseWriter(fake_client)
+    writer.save_course_import(_sample_course(), _sample_partants())
+
+    partant_payload = next(row for name, row in fake_client.calls if name == "partants")
+    assert partant_payload["nombre_victoires"] == 2
+    assert partant_payload["gains_carriere"] == 3416500
+
+    cote_calls = [row for name, row in fake_client.calls if name == "cotes"]
+    assert cote_calls, "au moins une cote écrite"
+    assert fake_client.last_on_conflict["cotes"] == "partant_id,type_capture"

@@ -108,6 +108,12 @@ class SupabaseWriter:
                         "ferrage": partant.ferrage,
                         "musique": partant.musique,
                         "statut": partant.statut,
+                        "age": partant.age,
+                        "nombre_courses": partant.nombre_courses,
+                        "nombre_victoires": partant.nombre_victoires,
+                        "nombre_places": partant.nombre_places,
+                        "gains_carriere": partant.gains_carriere,
+                        "gains_annee_en_cours": partant.gains_annee_en_cours,
                     },
                     on_conflict="course_id,numero_corde",
                 )
@@ -123,7 +129,8 @@ class SupabaseWriter:
                         "type_capture": cote.type_capture,
                         "valeur": cote.valeur,
                         "capture_at": cote.capture_at.isoformat(),
-                    }
+                    },
+                    on_conflict="partant_id,type_capture",
                 ).execute()
 
         return {"course_id": course_row["id"], "partant_ids": partant_ids}
