@@ -4,6 +4,7 @@
       {
         "numOfficiel": 1,
         "dateReunion": 1783807200000,
+        "timezoneOffset": 7200000,
         "hippodrome": {"code": "DEA", "libelleCourt": "DEAUVILLE", "libelleLong": "HIPPODROME DE DEAUVILLE"},
         "pays": {"code": "FRA", "libelle": "FRANCE"},
         "courses": [

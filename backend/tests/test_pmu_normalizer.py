@@ -39,3 +39,10 @@ def test_normalize_partants_trot_maps_deferre_and_reduction(pmu_participants_tro
     assert igor.reduction_kilometrique == 78.3
     assert igor.poids_kg is None
     assert igor.musique == "7aDm5a(25)6mDm9m3mDm9m"
+
+
+def test_normalize_course_reunion_date_uses_local_racing_day(pmu_programme_sample):
+    raw_reunion, raw_course = find_course_in_programme(pmu_programme_sample, 1, 1)
+    course = normalize_course(raw_reunion, raw_course)
+    # dateReunion 1783807200000 = 2026-07-11 22:00 UTC = 2026-07-12 00:00 Paris (offset +2h)
+    assert course.reunion.date.isoformat() == "2026-07-12"

@@ -38,7 +38,10 @@ def normalize_course(raw_reunion: dict, raw_course: dict) -> CourseNormalized:
         pays=raw_reunion["pays"]["code"],
     )
     reunion = ReunionNormalized(
-        date=datetime.fromtimestamp(raw_reunion["dateReunion"] / 1000, tz=timezone.utc).date(),
+        date=datetime.fromtimestamp(
+            (raw_reunion["dateReunion"] + raw_reunion.get("timezoneOffset", 0)) / 1000,
+            tz=timezone.utc,
+        ).date(),
         numero_reunion=raw_reunion["numOfficiel"],
         hippodrome=hippodrome,
     )
