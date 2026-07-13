@@ -1,4 +1,4 @@
-from app.models import CourseNormalized, PartantNormalized
+from app.models import CourseNormalized, PartantNormalized, PerformanceNormalized
 
 
 class SupabaseWriter:
@@ -45,6 +45,7 @@ class SupabaseWriter:
                     "categorie_classe": course.categorie_classe,
                     "heure_depart": course.heure_depart.isoformat(),
                     "statut": course.statut,
+                    "allocation": course.allocation,
                 },
                 on_conflict="reunion_id,numero_course",
             )
@@ -55,6 +56,7 @@ class SupabaseWriter:
         rider_role = "driver" if course.discipline == "trot_attele" else "jockey"
 
         partant_ids = []
+        cheval_id_by_corde = {}
         for partant in partants:
             cheval_row = (
                 self._client.table("chevaux")
@@ -69,6 +71,8 @@ class SupabaseWriter:
                 .execute()
                 .data[0]
             )
+
+            cheval_id_by_corde[partant.numero_corde] = cheval_row["id"]
 
             driver_jockey_id = None
             if partant.driver_jockey_nom:
@@ -101,6 +105,7 @@ class SupabaseWriter:
                         "course_id": course_row["id"],
                         "cheval_id": cheval_row["id"],
                         "numero_corde": partant.numero_corde,
+                        "place_corde": partant.place_corde,
                         "driver_jockey_id": driver_jockey_id,
                         "entraineur_id": entraineur_id,
                         "poids_kg": partant.poids_kg,
@@ -133,4 +138,55 @@ class SupabaseWriter:
                     on_conflict="partant_id,type_capture",
                 ).execute()
 
-        return {"course_id": course_row["id"], "partant_ids": partant_ids}
+        return {"course_id": course_row["id"], "partant_ids": partant_ids,
+                "cheval_id_by_corde": cheval_id_by_corde}
+
+    def save_performances(self, perf_by_num_pmu, cheval_id_by_corde) -> int:
+        n = 0
+        for num_pmu, perfs in perf_by_num_pmu.items():
+            cheval_id = cheval_id_by_corde.get(num_pmu)
+            if cheval_id is None:
+                continue
+            for perf in perfs:
+                self._client.table("chevaux_performances").upsert(
+                    {
+                        "cheval_id": cheval_id,
+                        "date_course": perf.date_course.isoformat(),
+                        "hippodrome": perf.hippodrome,
+                        "discipline": perf.discipline,
+                        "distance_m": perf.distance_m,
+                        "allocation": perf.allocation,
+                        "nb_participants": perf.nb_participants,
+                        "place": perf.place,
+                        "status_arrivee": perf.status_arrivee,
+                        "raw_place": perf.raw_place,
+                        "jockey_nom": perf.jockey_nom,
+                        "poids_jockey": perf.poids_jockey,
+                        "corde": perf.corde,
+                        "oeillere": perf.oeillere,
+                    },
+                    on_conflict="cheval_id,date_course,hippodrome,distance_m",
+                ).execute()
+                n += 1
+        return n
+
+    def save_entraineur_resultats(self, course, partants, cheval_id_by_corde) -> int:
+        n = 0
+        for partant in partants:
+            cheval_id = cheval_id_by_corde.get(partant.numero_corde)
+            if not partant.entraineur_nom or cheval_id is None:
+                continue
+            self._client.table("entraineur_resultats").upsert(
+                {
+                    "entraineur_nom": partant.entraineur_nom,
+                    "cheval_id": cheval_id,
+                    "date_course": course.reunion.date.isoformat(),
+                    "hippodrome": course.reunion.hippodrome.nom,
+                    "discipline": course.discipline,
+                    "place": partant.position_arrivee,
+                    "status_arrivee": None,
+                },
+                on_conflict="entraineur_nom,cheval_id,date_course",
+            ).execute()
+            n += 1
+        return n
