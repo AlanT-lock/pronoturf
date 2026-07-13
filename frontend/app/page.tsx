@@ -1,63 +1,128 @@
-import Image from "next/image";
+"use client";
+
+import { useCallback, useState } from "react";
+import { api } from "@/lib/api";
+import type { Course, Partant } from "@/lib/types";
+import { ImportForm } from "@/components/ImportForm";
+import { PartantsTable } from "@/components/PartantsTable";
 
 export default function Home() {
+  const [courseId, setCourseId] = useState<string | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [partants, setPartants] = useState<Partant[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [etatTerrain, setEtatTerrain] = useState("");
+  const [savingTerrain, setSavingTerrain] = useState(false);
+
+  const loadCourse = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await api.getCourse(id);
+      setCourse(data.course);
+      setPartants(data.partants);
+      setEtatTerrain(data.course.etat_terrain ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors du chargement de la course.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  async function handleImported(id: string) {
+    setCourseId(id);
+    await loadCourse(id);
+  }
+
+  async function handleEtatTerrainBlur() {
+    if (!courseId || !course) return;
+    if (etatTerrain === (course.etat_terrain ?? "")) return;
+    setSavingTerrain(true);
+    try {
+      await api.patchCourse(courseId, { etat_terrain: etatTerrain });
+      setCourse({ ...course, etat_terrain: etatTerrain });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Échec de l'enregistrement de l'état du terrain.");
+    } finally {
+      setSavingTerrain(false);
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-full bg-slate-950 text-slate-100">
+      <main className="mx-auto max-w-6xl px-6 py-10">
+        <header className="mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
+            pronoturf <span className="text-slate-500">—</span>{" "}
+            <span className="text-emerald-400">pronostic</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="mt-1 text-sm text-slate-400">
+            Import de course, saisie des partants et calcul du pronostic.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        </header>
+
+        <div className="flex flex-col gap-8">
+          <ImportForm onImported={handleImported} />
+
+          {error && (
+            <p className="rounded-md border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+              {error}
+            </p>
+          )}
+
+          {loading && <p className="text-sm text-slate-400">Chargement…</p>}
+
+          {course && (
+            <section className="flex flex-col gap-6">
+              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-5">
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                  Course {course.numero_course}
+                </h2>
+                <div className="flex flex-wrap items-end gap-6 text-sm">
+                  <div>
+                    <span className="block text-xs text-slate-500">Discipline</span>
+                    <span className="font-medium text-slate-100">{course.discipline}</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500">Distance</span>
+                    <span className="font-mono tabular-nums font-medium text-slate-100">
+                      {course.distance_m} m
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500">Statut</span>
+                    <span className="font-medium text-slate-100">{course.statut}</span>
+                  </div>
+                  <label className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-500">État du terrain</span>
+                    <input
+                      type="text"
+                      value={etatTerrain}
+                      onChange={(e) => setEtatTerrain(e.target.value)}
+                      onBlur={handleEtatTerrainBlur}
+                      disabled={savingTerrain}
+                      placeholder="ex. bon, souple…"
+                      className="w-40 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-emerald-500 disabled:opacity-50"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+                  Partants
+                </h2>
+                <PartantsTable partants={partants} onPartantSaved={() => loadCourse(courseId!)} />
+              </div>
+
+              {/*
+                Task 4 hook point: add "Calculer le pronostic" button here
+                (calls api.scoreCourse(courseId) / api.getPronostic(courseId))
+                plus the resulting classement table.
+              */}
+            </section>
+          )}
         </div>
       </main>
     </div>
