@@ -1,9 +1,13 @@
 """Calcul et normalisation sur [0,1] des facteurs de scoring dans le contexte d'une course.
 
-Chaque facteur disponible au Plan 2 est calculé pour tous les partants d'une course, puis
+Chaque facteur disponible est calculé pour tous les partants d'une course, puis
 normalisé relativement à la course (min-max ou inverse borné) pour être comparable.
+Les facteurs de taux contextuel (distance/discipline/niveau/hippodrome) et
+jockey/entraineur sont des valeurs absolues [0,1] (0.5 quand l'historique est
+insuffisant), tandis que cote/corde/poids restent relatifs à la course (min-max).
 """
 
+from app.scoring import context_stats as cs
 from app.scoring.musique import forme_score
 
 # Score de déferrage (trot) : plus déferré = léger avantage supposé.
@@ -21,7 +25,7 @@ def _minmax(value: float, lo: float, hi: float) -> float:
     return (value - lo) / (hi - lo)
 
 
-def compute_factors(partants: list[dict], discipline: str) -> dict[str, dict[str, float]]:
+def compute_factors(partants: list[dict], discipline: str, course_context: dict) -> dict[int, dict[str, float]]:
     actifs = [p for p in partants if p.get("statut") != "non_partant"]
     if not actifs:
         return {}
@@ -57,19 +61,35 @@ def compute_factors(partants: list[dict], discipline: str) -> dict[str, dict[str
         # poids faible -> score élevé : on inverse le min-max.
         return 1.0 - _minmax(poids, lo_p, hi_p)
 
-    # --- Corde : numéro faible = léger avantage (surtout plat). Min-max inversé.
-    cordes = [p["numero_corde"] for p in actifs]
-    lo_n, hi_n = min(cordes), max(cordes)
+    # --- Corde : vraie corde (place_corde) si dispo, sinon numero_corde. Faible = mieux.
+    def corde_value(p: dict) -> int:
+        return p.get("place_corde") if p.get("place_corde") is not None else p["numero_corde"]
+    corde_vals = [corde_value(p) for p in actifs]
+    lo_n, hi_n = min(corde_vals), max(corde_vals)
 
-    factors: dict[str, dict[str, float]] = {}
+    dist = course_context.get("distance_m")
+    allocation = course_context.get("allocation")
+    hippo = course_context.get("hippodrome")
+
+    def _or_neutral(v: float | None) -> float:
+        return 0.5 if v is None else v
+
+    factors: dict[int, dict[str, float]] = {}
     for p in actifs:
         corde = p["numero_corde"]
         inv = inv_cotes[corde]
+        perfs = p.get("performances") or []
         factors[corde] = {
             "forme": forme_score(p.get("musique")),
             "taux_reussite": taux(p),
             "ferrage_poids": ferrage_poids(p),
             "cote": _minmax(inv, lo_c, hi_c),
-            "corde": 1.0 - _minmax(corde, lo_n, hi_n),
+            "corde": 1.0 - _minmax(corde_value(p), lo_n, hi_n),
+            "taux_distance": _or_neutral(cs.taux_distance(perfs, dist)),
+            "taux_discipline": _or_neutral(cs.taux_discipline(perfs, discipline)),
+            "taux_niveau": _or_neutral(cs.taux_niveau(perfs, allocation)),
+            "taux_hippodrome": _or_neutral(cs.taux_hippodrome(perfs, hippo)),
+            "jockey": _or_neutral(p.get("jockey_taux")),
+            "entraineur": _or_neutral(p.get("entraineur_taux")),
         }
     return factors

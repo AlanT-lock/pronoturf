@@ -1,27 +1,21 @@
 """Pondérations de scoring : valeurs par défaut par discipline + chargement/seed depuis la DB.
 
-Les facteurs Geny/historique (fraicheur, couple, entraineur) ont un poids 0 au Plan 2 ;
-le moteur redistribue leur poids sur les facteurs disponibles. Ils passeront > 0 en Plan 3/4.
+Les 11 facteurs (forme, cote, taux_reussite, ferrage_poids, corde, taux_distance,
+taux_discipline, taux_niveau, taux_hippodrome, jockey, entraineur) ont un poids par défaut
+identique pour toutes les disciplines. La somme des poids vaut 1.0 par discipline.
 """
 
-# Poids par discipline. Somme = 1.0. fraicheur/couple/entraineur à 0 (différés).
+_POIDS_V1 = {
+    "forme": 0.16, "cote": 0.18, "taux_reussite": 0.10, "ferrage_poids": 0.08, "corde": 0.08,
+    "taux_distance": 0.10, "taux_discipline": 0.06, "taux_niveau": 0.06,
+    "taux_hippodrome": 0.06, "jockey": 0.06, "entraineur": 0.06,
+}
+
 DEFAULT_PONDERATIONS: dict[str, dict[str, float]] = {
-    "trot_attele": {
-        "forme": 0.30, "taux_reussite": 0.20, "ferrage_poids": 0.15,
-        "cote": 0.20, "corde": 0.15, "fraicheur": 0.0, "couple": 0.0, "entraineur": 0.0,
-    },
-    "trot_monte": {
-        "forme": 0.30, "taux_reussite": 0.20, "ferrage_poids": 0.15,
-        "cote": 0.20, "corde": 0.15, "fraicheur": 0.0, "couple": 0.0, "entraineur": 0.0,
-    },
-    "plat": {
-        "forme": 0.30, "taux_reussite": 0.20, "ferrage_poids": 0.15,
-        "cote": 0.20, "corde": 0.15, "fraicheur": 0.0, "couple": 0.0, "entraineur": 0.0,
-    },
-    "obstacle": {
-        "forme": 0.30, "taux_reussite": 0.20, "ferrage_poids": 0.15,
-        "cote": 0.20, "corde": 0.15, "fraicheur": 0.0, "couple": 0.0, "entraineur": 0.0,
-    },
+    "trot_attele": dict(_POIDS_V1),
+    "trot_monte": dict(_POIDS_V1),
+    "plat": dict(_POIDS_V1),
+    "obstacle": dict(_POIDS_V1),
 }
 
 
