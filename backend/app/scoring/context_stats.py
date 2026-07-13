@@ -1,7 +1,8 @@
 """Taux de réussite par contexte (distance/discipline/niveau/hippodrome) + indice de confiance.
 
-Un taux vaut None quand l'échantillon est insuffisant (< MIN_SAMPLE) — le moteur le
-traduit alors en neutre 0.5. Un succès = arrivé dans les 3 premiers.
+Un taux vaut None quand l'échantillon est insuffisant (< MIN_SAMPLE) — le facteur est
+alors OMIS pour ce cheval et le moteur redistribue son poids sur les facteurs présents
+(pas de neutralisation à 0.5). Un succès = arrivé dans les 3 premiers.
 """
 
 DISTANCE_BAND = 0.10
