@@ -78,3 +78,27 @@ def test_normalize_performances_non_place():
     assert p.place is None
     assert p.raw_place == "DP"
     assert p.discipline == "trot_attele"
+
+
+def test_normalize_performances_skips_course_without_itshim():
+    raw = {
+        "participants": [
+            {
+                "numPmu": 4, "nomCheval": "NO_HIM",
+                "coursesCourues": [
+                    {
+                        "date": 1748772000000, "hippodrome": "LONGCHAMP",
+                        "discipline": "PLAT", "allocation": 25000, "distance": 2400, "nbParticipants": 10,
+                        "participants": [
+                            {"numPmu": 7, "itsHim": False, "nomCheval": "NO_HIM", "nomJockey": "J.SMITH"},
+                            {"numPmu": 8, "itsHim": False, "nomCheval": "OTHER"},
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+    result = normalize_performances(raw)
+    # Course without itsHim participant should be silently dropped - horse exists but with empty perfs list
+    assert result == {4: []}
+    assert result[4] == []
