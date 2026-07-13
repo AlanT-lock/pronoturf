@@ -25,7 +25,11 @@ class FakeQuery:
         return self
 
     def eq(self, col, val):
-        self._filters[col] = val
+        self._filters[col] = ("eq", val)
+        return self
+
+    def in_(self, col, vals):
+        self._filters[col] = ("in", set(vals))
         return self
 
     def limit(self, *a, **k):
@@ -79,12 +83,18 @@ class FakeStore:
                     "id": "p1", "course_id": "course-1", "numero_corde": 1, "musique": "1a1a2a",
                     "nombre_courses": 10, "nombre_victoires": 8, "nombre_places": 9, "poids_kg": 56.0,
                     "reduction_kilometrique": None, "ferrage": None, "statut": "partant", "champs_manuels": [],
+                    "cheval_id": "ch1",
                 },
                 {
                     "id": "p2", "course_id": "course-1", "numero_corde": 2, "musique": "9a9a0a",
                     "nombre_courses": 10, "nombre_victoires": 0, "nombre_places": 1, "poids_kg": 60.0,
                     "reduction_kilometrique": None, "ferrage": None, "statut": "partant", "champs_manuels": [],
+                    "cheval_id": "ch2",
                 },
+            ],
+            "chevaux": [
+                {"id": "ch1", "nom": "Fusain De Losque"},
+                {"id": "ch2", "nom": "Belle Étoile"},
             ],
             "cotes": [
                 {"id": "c1", "partant_id": "p1", "type_capture": "finale", "valeur": 2.0},
@@ -103,7 +113,12 @@ class FakeStore:
 
     @staticmethod
     def _match(row, filters):
-        return all(row.get(k) == v for k, v in filters.items())
+        for col, (op, val) in filters.items():
+            if op == "eq" and row.get(col) != val:
+                return False
+            if op == "in" and row.get(col) not in val:
+                return False
+        return True
 
     def select(self, name, filters):
         return [r for r in self.tables.get(name, []) if self._match(r, filters)]
@@ -262,7 +277,7 @@ def test_get_pronostic_reads_scores_after_scoring():
         body = resp.json()
         assert body["course_id"] == "course-1"
         assert len(body["classement"]) == 2
-        rangs = sorted(r["rang_pronostique"] for r in body["classement"])
+        rangs = sorted(r["rang"] for r in body["classement"])
         assert rangs == [1, 2]
     finally:
         app.dependency_overrides.clear()
@@ -274,5 +289,32 @@ def test_get_pronostic_404_when_course_missing():
     try:
         client = TestClient(app)
         assert client.get("/courses/does-not-exist/pronostic").status_code == 404
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_score_response_includes_nom_cheval_and_corde():
+    store = FakeStore()
+    app.dependency_overrides[get_supabase_client] = lambda: FakeClient(store)
+    try:
+        client = TestClient(app)
+        body = client.post("/courses/course-1/score").json()
+        top = body["classement"][0]
+        assert "nom_cheval" in top and top["nom_cheval"]
+        assert "numero_corde" in top
+        assert "rang" in top
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_pronostic_shape_matches_score_shape():
+    store = FakeStore()
+    app.dependency_overrides[get_supabase_client] = lambda: FakeClient(store)
+    try:
+        client = TestClient(app)
+        client.post("/courses/course-1/score")
+        body = client.get("/courses/course-1/pronostic").json()
+        row = body["classement"][0]
+        assert {"partant_id", "numero_corde", "nom_cheval", "score_total", "rang", "details_facteurs"} <= set(row)
     finally:
         app.dependency_overrides.clear()

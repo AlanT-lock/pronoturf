@@ -1,4 +1,5 @@
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.pmu_client import fetch_participants, fetch_programme
@@ -9,6 +10,13 @@ from app.supabase_writer import SupabaseWriter
 
 app = FastAPI(title="pronoturf")
 app.include_router(scoring_router)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")

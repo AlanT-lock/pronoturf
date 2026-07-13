@@ -42,6 +42,41 @@ def _retained_cote(client, partant_id: str) -> float | None:
     return by_type.get("reference")
 
 
+def _cheval_nom_par_partant(client, partant_ids: list[str]) -> dict[str, tuple[int, str | None]]:
+    """Map partant_id -> (numero_corde, nom_cheval), batché (une requête `partants`, une `chevaux`)."""
+    if not partant_ids:
+        return {}
+    partants = (
+        client.table("partants")
+        .select("id, numero_corde, cheval_id")
+        .in_("id", partant_ids)
+        .execute()
+        .data
+    )
+    cheval_ids = [p["cheval_id"] for p in partants if p.get("cheval_id")]
+    chevaux = (
+        client.table("chevaux").select("id, nom").in_("id", cheval_ids).execute().data
+        if cheval_ids
+        else []
+    )
+    nom_by_cheval_id = {c["id"]: c["nom"] for c in chevaux}
+    return {p["id"]: (p["numero_corde"], nom_by_cheval_id.get(p["cheval_id"])) for p in partants}
+
+
+def _retained_cotes_par_partant(client, partant_ids: list[str]) -> dict[str, float | None]:
+    """Cote retenue par partant (finale sinon reference sinon None), batché en une requête."""
+    if not partant_ids:
+        return {}
+    cotes = client.table("cotes").select("*").in_("partant_id", partant_ids).execute().data
+    by_partant: dict[str, dict[str, float]] = {}
+    for c in cotes:
+        by_partant.setdefault(c["partant_id"], {})[c["type_capture"]] = c["valeur"]
+    return {
+        partant_id: (types.get("finale") if "finale" in types else types.get("reference"))
+        for partant_id, types in by_partant.items()
+    }
+
+
 def _partant_dict_for_scoring(client, partant: dict) -> dict:
     return {
         "numero_corde": partant["numero_corde"],
@@ -61,8 +96,13 @@ def _partant_dict_for_scoring(client, partant: dict) -> dict:
 def get_course(course_id: str, client=Depends(get_supabase_client)) -> dict:
     course = _get_course_or_404(client, course_id)
     partants = _get_partants_for_course(client, course_id)
+    cheval_map = _cheval_nom_par_partant(client, [p["id"] for p in partants])
     enriched = [
-        {**partant, "cote_retenue": _retained_cote(client, partant["id"])}
+        {
+            **partant,
+            "cote_retenue": _retained_cote(client, partant["id"]),
+            "nom_cheval": cheval_map.get(partant["id"], (None, None))[1],
+        }
         for partant in partants
     ]
     return {"course": course, "partants": enriched}
@@ -127,7 +167,17 @@ def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
         ]
         client.table("scores_pronostic").insert(rows).execute()
 
-    return {"course_id": course_id, "classement": classement}
+    cheval_map = _cheval_nom_par_partant(client, list(partant_id_by_corde.values()))
+    enriched_classement = [
+        {
+            **row,
+            "partant_id": partant_id_by_corde[row["numero_corde"]],
+            "nom_cheval": cheval_map.get(partant_id_by_corde[row["numero_corde"]], (None, None))[1],
+        }
+        for row in classement
+    ]
+
+    return {"course_id": course_id, "classement": enriched_classement}
 
 
 @router.get("/courses/{course_id}/pronostic")
@@ -141,4 +191,19 @@ def get_pronostic(course_id: str, client=Depends(get_supabase_client)) -> dict:
         .execute()
         .data
     )
-    return {"course_id": course_id, "classement": rows}
+    partant_ids = [r["partant_id"] for r in rows]
+    cheval_map = _cheval_nom_par_partant(client, partant_ids)
+    cote_map = _retained_cotes_par_partant(client, partant_ids)
+    classement = [
+        {
+            "partant_id": r["partant_id"],
+            "numero_corde": cheval_map.get(r["partant_id"], (None, None))[0],
+            "nom_cheval": cheval_map.get(r["partant_id"], (None, None))[1],
+            "score_total": r["score_total"],
+            "rang": r["rang_pronostique"],
+            "details_facteurs": r["details_facteurs"],
+            "cote": cote_map.get(r["partant_id"]),
+        }
+        for r in rows
+    ]
+    return {"course_id": course_id, "classement": classement}
