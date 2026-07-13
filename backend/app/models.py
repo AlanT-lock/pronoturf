@@ -31,6 +31,7 @@ class CourseNormalized(BaseModel):
     numero_course: int
     discipline: Discipline
     distance_m: int
+    allocation: Optional[float] = None
     categorie_classe: Optional[str]
     heure_depart: datetime
     statut: StatutCourse
@@ -39,6 +40,7 @@ class CourseNormalized(BaseModel):
 
 class PartantNormalized(BaseModel):
     numero_corde: int
+    place_corde: Optional[int] = None
     nom_cheval: str
     id_pmu_cheval: str
     sexe: Optional[str]
@@ -57,3 +59,20 @@ class PartantNormalized(BaseModel):
     nombre_places: Optional[int] = None
     gains_carriere: Optional[float] = None
     gains_annee_en_cours: Optional[float] = None
+
+
+class PerformanceNormalized(BaseModel):
+    num_pmu: int
+    date_course: date
+    hippodrome: Optional[str] = None
+    discipline: Optional[str] = None
+    distance_m: Optional[int] = None
+    allocation: Optional[float] = None
+    nb_participants: Optional[int] = None
+    place: Optional[int] = None
+    status_arrivee: Optional[str] = None
+    raw_place: Optional[str] = None
+    jockey_nom: Optional[str] = None
+    poids_jockey: Optional[float] = None
+    corde: Optional[int] = None
+    oeillere: Optional[str] = None
