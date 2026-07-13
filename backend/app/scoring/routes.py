@@ -100,6 +100,7 @@ def get_course(course_id: str, client=Depends(get_supabase_client)) -> dict:
     enriched = [
         {
             **partant,
+            "partant_id": partant["id"],
             "cote_retenue": _retained_cote(client, partant["id"]),
             "nom_cheval": cheval_map.get(partant["id"], (None, None))[1],
         }

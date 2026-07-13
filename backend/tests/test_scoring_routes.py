@@ -229,6 +229,20 @@ def test_get_course_404_when_missing():
         app.dependency_overrides.clear()
 
 
+def test_get_course_partants_have_partant_id():
+    store = FakeStore()
+    app.dependency_overrides[get_supabase_client] = lambda: FakeClient(store)
+    try:
+        client = TestClient(app)
+        body = client.get("/courses/course-1").json()
+        assert body["partants"], "au moins un partant"
+        for p in body["partants"]:
+            assert "partant_id" in p and p["partant_id"]
+            assert "nom_cheval" in p
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_patch_course_updates_etat_terrain():
     store = FakeStore()
     _override(store)
