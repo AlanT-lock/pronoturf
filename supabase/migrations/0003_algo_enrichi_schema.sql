@@ -39,3 +39,6 @@ create index entraineur_resultats_nom_idx on entraineur_resultats (entraineur_no
 
 -- Réactivera les nouveaux poids par défaut (11 facteurs) au prochain load :
 update ponderations_config set actif = false where nom = 'defaut';
+
+alter table scores_pronostic add column confiance numeric;
+alter table scores_pronostic add column nb_courses_historique int;

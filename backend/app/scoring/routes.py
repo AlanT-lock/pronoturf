@@ -220,6 +220,8 @@ def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
                 "score_total": row["score_total"],
                 "rang_pronostique": row["rang"],
                 "details_facteurs": row["details_facteurs"],
+                "confiance": row["confiance"],
+                "nb_courses_historique": row["nb_courses_historique"],
             }
             for row in classement
         ]
@@ -263,6 +265,8 @@ def get_pronostic(course_id: str, client=Depends(get_supabase_client)) -> dict:
             "rang": r["rang_pronostique"],
             "details_facteurs": r["details_facteurs"],
             "cote": cote_map.get(r["partant_id"]),
+            "confiance": r.get("confiance"),
+            "nb_courses_historique": r.get("nb_courses_historique"),
         }
         for r in rows
     ]

@@ -361,6 +361,20 @@ def test_score_response_includes_nom_cheval_and_corde():
         app.dependency_overrides.clear()
 
 
+def test_get_pronostic_includes_confiance():
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        client.post("/courses/course-1/score")
+        body = client.get("/courses/course-1/pronostic").json()
+        row = body["classement"][0]
+        assert "confiance" in row
+        assert "nb_courses_historique" in row
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_pronostic_shape_matches_score_shape():
     store = FakeStore()
     app.dependency_overrides[get_supabase_client] = lambda: FakeClient(store)
