@@ -6,13 +6,14 @@ block the merge. Ordered roughly by value.
 
 ## Worth doing before this UI grows
 
-1. **Backend: `GET /courses/:id` omits `sexe`** (real contract miss, graceful today)
-   - Plan 2b L62 lists `sexe` in the course contract; frontend `Partant` type declares
-     `sexe: string | null`, so the "Sexe/Âge" column renders `—/age` (age shows, sexe never does).
-   - Root cause: `sexe` lives on the `chevaux` table (migration 0001, L35); `age` is on
-     `partants` and flows through `select("*")`. The chevaux enrichment select pulls only the name.
-   - Fix: add `sexe` to the `chevaux` select in `_cheval_nom_par_partant` and thread it into
-     `get_course` enrichment. ~small backend change; then re-verify the column renders.
+1. ~~**Backend: `GET /courses/:id` omits `sexe`**~~ — **DONE** (commit follows this doc).
+   - Fixed: `_cheval_nom_par_partant` now selects `id, nom, sexe` and returns
+     `(numero_corde, nom, sexe)`; `get_course` threads `sexe` into each enriched partant.
+     TDD (`test_get_course_partants_expose_sexe_from_cheval`), full suite 47/47, and real E2E
+     confirmed (9/9 partants now report sexe, e.g. HONGRES/MALES). Ingestion already wrote
+     `chevaux.sexe` (supabase_writer.py:64), so real data surfaces immediately.
+   - Note: values are raw PMU labels ("HONGRES", "MALES", "FEMELLES") — verbose for the column;
+     reformatting to M/F/H is optional future polish, not part of this fix.
 
 2. **Keyboard a11y on the pronostic row expand** (`PronosticTable.tsx`)
    - Row expand/collapse is `onClick` on a `<tr>` with no `role="button"` / `tabIndex` /

@@ -93,8 +93,8 @@ class FakeStore:
                 },
             ],
             "chevaux": [
-                {"id": "ch1", "nom": "Fusain De Losque"},
-                {"id": "ch2", "nom": "Belle Étoile"},
+                {"id": "ch1", "nom": "Fusain De Losque", "sexe": "H"},
+                {"id": "ch2", "nom": "Belle Étoile", "sexe": "F"},
             ],
             "cotes": [
                 {"id": "c1", "partant_id": "p1", "type_capture": "finale", "valeur": 2.0},
@@ -215,6 +215,20 @@ def test_get_course_returns_course_and_partants_with_cote_retenue():
         assert body["course"]["id"] == "course-1"
         partant1 = next(p for p in body["partants"] if p["numero_corde"] == 1)
         assert partant1["cote_retenue"] == 2.0
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_course_partants_expose_sexe_from_cheval():
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        body = client.get("/courses/course-1").json()
+        partant1 = next(p for p in body["partants"] if p["numero_corde"] == 1)
+        partant2 = next(p for p in body["partants"] if p["numero_corde"] == 2)
+        assert partant1["sexe"] == "H"
+        assert partant2["sexe"] == "F"
     finally:
         app.dependency_overrides.clear()
 

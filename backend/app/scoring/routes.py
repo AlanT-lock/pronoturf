@@ -42,8 +42,10 @@ def _retained_cote(client, partant_id: str) -> float | None:
     return by_type.get("reference")
 
 
-def _cheval_nom_par_partant(client, partant_ids: list[str]) -> dict[str, tuple[int, str | None]]:
-    """Map partant_id -> (numero_corde, nom_cheval), batché (une requête `partants`, une `chevaux`)."""
+def _cheval_nom_par_partant(
+    client, partant_ids: list[str]
+) -> dict[str, tuple[int, str | None, str | None]]:
+    """Map partant_id -> (numero_corde, nom_cheval, sexe), batché (une requête `partants`, une `chevaux`)."""
     if not partant_ids:
         return {}
     partants = (
@@ -55,12 +57,19 @@ def _cheval_nom_par_partant(client, partant_ids: list[str]) -> dict[str, tuple[i
     )
     cheval_ids = [p["cheval_id"] for p in partants if p.get("cheval_id")]
     chevaux = (
-        client.table("chevaux").select("id, nom").in_("id", cheval_ids).execute().data
+        client.table("chevaux").select("id, nom, sexe").in_("id", cheval_ids).execute().data
         if cheval_ids
         else []
     )
-    nom_by_cheval_id = {c["id"]: c["nom"] for c in chevaux}
-    return {p["id"]: (p["numero_corde"], nom_by_cheval_id.get(p["cheval_id"])) for p in partants}
+    cheval_by_id = {c["id"]: c for c in chevaux}
+    return {
+        p["id"]: (
+            p["numero_corde"],
+            (cheval_by_id.get(p["cheval_id"]) or {}).get("nom"),
+            (cheval_by_id.get(p["cheval_id"]) or {}).get("sexe"),
+        )
+        for p in partants
+    }
 
 
 def _retained_cotes_par_partant(client, partant_ids: list[str]) -> dict[str, float | None]:
@@ -102,7 +111,8 @@ def get_course(course_id: str, client=Depends(get_supabase_client)) -> dict:
             **partant,
             "partant_id": partant["id"],
             "cote_retenue": _retained_cote(client, partant["id"]),
-            "nom_cheval": cheval_map.get(partant["id"], (None, None))[1],
+            "nom_cheval": cheval_map.get(partant["id"], (None, None, None))[1],
+            "sexe": cheval_map.get(partant["id"], (None, None, None))[2],
         }
         for partant in partants
     ]
@@ -173,7 +183,9 @@ def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
         {
             **row,
             "partant_id": partant_id_by_corde[row["numero_corde"]],
-            "nom_cheval": cheval_map.get(partant_id_by_corde[row["numero_corde"]], (None, None))[1],
+            "nom_cheval": cheval_map.get(
+                partant_id_by_corde[row["numero_corde"]], (None, None, None)
+            )[1],
         }
         for row in classement
     ]
@@ -198,8 +210,8 @@ def get_pronostic(course_id: str, client=Depends(get_supabase_client)) -> dict:
     classement = [
         {
             "partant_id": r["partant_id"],
-            "numero_corde": cheval_map.get(r["partant_id"], (None, None))[0],
-            "nom_cheval": cheval_map.get(r["partant_id"], (None, None))[1],
+            "numero_corde": cheval_map.get(r["partant_id"], (None, None, None))[0],
+            "nom_cheval": cheval_map.get(r["partant_id"], (None, None, None))[1],
             "score_total": r["score_total"],
             "rang": r["rang_pronostique"],
             "details_facteurs": r["details_facteurs"],
