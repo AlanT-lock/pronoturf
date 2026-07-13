@@ -76,6 +76,7 @@ class FakeStore:
                 {
                     "id": "course-1", "numero_course": 1, "discipline": "plat", "statut": "terminee",
                     "distance_m": 1200, "reunion_id": "r1", "etat_terrain": None,
+                    "allocation": 20000,
                 },
             ],
             "partants": [
@@ -84,12 +85,14 @@ class FakeStore:
                     "nombre_courses": 10, "nombre_victoires": 8, "nombre_places": 9, "poids_kg": 56.0,
                     "reduction_kilometrique": None, "ferrage": None, "statut": "partant", "champs_manuels": [],
                     "cheval_id": "ch1",
+                    "place_corde": 1, "driver_jockey_id": None, "entraineur_id": None,
                 },
                 {
                     "id": "p2", "course_id": "course-1", "numero_corde": 2, "musique": "9a9a0a",
                     "nombre_courses": 10, "nombre_victoires": 0, "nombre_places": 1, "poids_kg": 60.0,
                     "reduction_kilometrique": None, "ferrage": None, "statut": "partant", "champs_manuels": [],
                     "cheval_id": "ch2",
+                    "place_corde": 2, "driver_jockey_id": None, "entraineur_id": None,
                 },
             ],
             "chevaux": [
@@ -107,6 +110,11 @@ class FakeStore:
                 },
             ],
             "scores_pronostic": [],
+            "chevaux_performances": [],
+            "entraineur_resultats": [],
+            "reunions": [{"id": "r1", "hippodrome_id": "h1", "date": "2026-07-13", "numero_reunion": 1}],
+            "hippodromes": [{"id": "h1", "nom": "DIEPPE", "code_pmu": "DIE", "pays": "FRA"}],
+            "intervenants": [],
         }
         self.inserted: dict[str, list[dict]] = {}
         self.deleted: list[str] = []
@@ -172,6 +180,8 @@ def test_score_endpoint_returns_ranked_pronostic():
         assert body["classement"][0]["rang"] == 1
         assert store.inserted.get("scores_pronostic")
         assert len(store.tables["scores_pronostic"]) == 2
+        assert "confiance" in body["classement"][0]
+        assert "nb_courses_historique" in body["classement"][0]
     finally:
         app.dependency_overrides.clear()
 

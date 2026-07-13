@@ -8,6 +8,7 @@ pronostic (écrit dans scores_pronostic) et sa lecture.
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from app.scoring import global_stats
 from app.scoring.engine import score_course
 from app.scoring.ponderations import load_active_ponderation
 from app.supabase_client import get_supabase_client
@@ -86,9 +87,45 @@ def _retained_cotes_par_partant(client, partant_ids: list[str]) -> dict[str, flo
     }
 
 
-def _partant_dict_for_scoring(client, partant: dict) -> dict:
+def _course_context(client, course: dict) -> dict:
+    hippodrome_nom = None
+    reunion = (
+        client.table("reunions").select("hippodrome_id").eq("id", course["reunion_id"]).limit(1).execute().data
+    )
+    if reunion:
+        hippo = (
+            client.table("hippodromes").select("nom").eq("id", reunion[0]["hippodrome_id"]).limit(1).execute().data
+        )
+        if hippo:
+            hippodrome_nom = hippo[0]["nom"]
+    return {"distance_m": course.get("distance_m"), "allocation": course.get("allocation"),
+            "hippodrome": hippodrome_nom}
+
+
+def _performances_par_cheval(client, cheval_ids: list[str]) -> dict[str, list[dict]]:
+    if not cheval_ids:
+        return {}
+    rows = client.table("chevaux_performances").select("*").in_("cheval_id", cheval_ids).execute().data
+    out: dict[str, list[dict]] = {}
+    for r in rows:
+        out.setdefault(r["cheval_id"], []).append(r)
+    return out
+
+
+def _jockey_entraineur_noms(client, partant: dict) -> tuple[str | None, str | None]:
+    def nom(interv_id):
+        if not interv_id:
+            return None
+        rows = client.table("intervenants").select("nom").eq("id", interv_id).limit(1).execute().data
+        return rows[0]["nom"] if rows else None
+    return nom(partant.get("driver_jockey_id")), nom(partant.get("entraineur_id"))
+
+
+def _partant_dict_for_scoring(client, partant: dict, perfs: list[dict]) -> dict:
+    jockey_nom, entraineur_nom = _jockey_entraineur_noms(client, partant)
     return {
         "numero_corde": partant["numero_corde"],
+        "place_corde": partant.get("place_corde"),
         "musique": partant.get("musique"),
         "nombre_courses": partant.get("nombre_courses"),
         "nombre_victoires": partant.get("nombre_victoires"),
@@ -98,6 +135,9 @@ def _partant_dict_for_scoring(client, partant: dict) -> dict:
         "reduction_kilometrique": partant.get("reduction_kilometrique"),
         "ferrage": partant.get("ferrage"),
         "statut": partant.get("statut"),
+        "performances": perfs,
+        "jockey_taux": global_stats.jockey_taux(client, jockey_nom),
+        "entraineur_taux": global_stats.entraineur_taux(client, entraineur_nom),
     }
 
 
@@ -157,10 +197,15 @@ def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
     course = _get_course_or_404(client, course_id)
     partants = _get_partants_for_course(client, course_id)
     partant_id_by_corde = {p["numero_corde"]: p["id"] for p in partants}
-    partant_dicts = [_partant_dict_for_scoring(client, p) for p in partants]
+    perfs_par_cheval = _performances_par_cheval(client, [p["cheval_id"] for p in partants])
+    partant_dicts = [
+        _partant_dict_for_scoring(client, p, perfs_par_cheval.get(p["cheval_id"], []))
+        for p in partants
+    ]
+    context = _course_context(client, course)
 
     ponderation = load_active_ponderation(client, course["discipline"])
-    classement = score_course(partant_dicts, course["discipline"], ponderation["poids"])
+    classement = score_course(partant_dicts, course["discipline"], ponderation["poids"], context)
 
     client.table("scores_pronostic").delete().eq("course_id", course_id).execute()
 
