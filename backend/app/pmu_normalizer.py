@@ -5,6 +5,7 @@ from app.models import (
     CoteNormalized,
     HippodromeNormalized,
     PartantNormalized,
+    PerformanceNormalized,
     ReunionNormalized,
 )
 
@@ -49,6 +50,7 @@ def normalize_course(raw_reunion: dict, raw_course: dict) -> CourseNormalized:
         numero_course=raw_course["numOrdre"],
         discipline=_DISCIPLINE_MAP[raw_course["discipline"]],
         distance_m=raw_course["distance"],
+        allocation=raw_course.get("montantPrix"),
         categorie_classe=raw_course.get("categorieParticularite"),
         heure_depart=datetime.fromtimestamp(raw_course["heureDepart"] / 1000, tz=timezone.utc),
         statut="terminee" if raw_course.get("arriveeDefinitive") else "a_venir",
@@ -81,6 +83,7 @@ def normalize_partants(raw_participants: list[dict], course_terminee: bool) -> l
         partants.append(
             PartantNormalized(
                 numero_corde=raw["numPmu"],
+                place_corde=raw.get("placeCorde"),
                 nom_cheval=raw["nom"],
                 id_pmu_cheval=raw["idCheval"],
                 sexe=raw.get("sexe"),
@@ -102,3 +105,42 @@ def normalize_partants(raw_participants: list[dict], course_terminee: bool) -> l
             )
         )
     return partants
+
+
+def normalize_performances(raw_perf: dict) -> dict[int, list[PerformanceNormalized]]:
+    result: dict[int, list[PerformanceNormalized]] = {}
+    for cheval in raw_perf.get("participants", []):
+        num_pmu = cheval["numPmu"]
+        perfs: list[PerformanceNormalized] = []
+        for course in cheval.get("coursesCourues", []):
+            moi = next(
+                (pp for pp in course.get("participants", []) if pp.get("itsHim")),
+                None,
+            )
+            if moi is None:
+                continue
+            place_obj = moi.get("place") or {}
+            raw_discipline = course.get("discipline")
+            discipline = _DISCIPLINE_MAP.get(raw_discipline, raw_discipline.lower() if raw_discipline else None)
+            perfs.append(
+                PerformanceNormalized(
+                    num_pmu=num_pmu,
+                    date_course=datetime.fromtimestamp(
+                        (course["date"] + course.get("timezoneOffset", 0)) / 1000, tz=timezone.utc
+                    ).date(),
+                    hippodrome=course.get("hippodrome"),
+                    discipline=discipline,
+                    distance_m=course.get("distance"),
+                    allocation=course.get("allocation"),
+                    nb_participants=course.get("nbParticipants"),
+                    place=place_obj.get("place"),
+                    status_arrivee=place_obj.get("statusArrivee"),
+                    raw_place=place_obj.get("rawValue"),
+                    jockey_nom=moi.get("nomJockey"),
+                    poids_jockey=moi.get("poidsJockey"),
+                    corde=moi.get("corde"),
+                    oeillere=moi.get("oeillere"),
+                )
+            )
+        result[num_pmu] = perfs
+    return result
