@@ -15,6 +15,8 @@ export type Partant = {
   ferrage: string | null;
   statut: string;
   cote_retenue: number | null;
+  jockey_nom: string | null;
+  entraineur_nom: string | null;
 };
 
 export type Course = {
@@ -34,4 +36,6 @@ export type ScoreRow = {
   rang: number;
   details_facteurs: Record<string, FactorDetail>;
   cote?: number | null;
+  confiance?: number;
+  nb_courses_historique?: number;
 };

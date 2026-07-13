@@ -85,7 +85,7 @@ class FakeStore:
                     "nombre_courses": 10, "nombre_victoires": 8, "nombre_places": 9, "poids_kg": 56.0,
                     "reduction_kilometrique": None, "ferrage": None, "statut": "partant", "champs_manuels": [],
                     "cheval_id": "ch1",
-                    "place_corde": 1, "driver_jockey_id": None, "entraineur_id": None,
+                    "place_corde": 1, "driver_jockey_id": "iv1", "entraineur_id": "iv2",
                 },
                 {
                     "id": "p2", "course_id": "course-1", "numero_corde": 2, "musique": "9a9a0a",
@@ -114,7 +114,10 @@ class FakeStore:
             "entraineur_resultats": [],
             "reunions": [{"id": "r1", "hippodrome_id": "h1", "date": "2026-07-13", "numero_reunion": 1}],
             "hippodromes": [{"id": "h1", "nom": "DIEPPE", "code_pmu": "DIE", "pays": "FRA"}],
-            "intervenants": [],
+            "intervenants": [
+                {"id": "iv1", "nom": "S.PASQUIER", "role": "jockey"},
+                {"id": "iv2", "nom": "N.CAULLERY", "role": "entraineur"},
+            ],
         }
         self.inserted: dict[str, list[dict]] = {}
         self.deleted: list[str] = []
@@ -239,6 +242,19 @@ def test_get_course_partants_expose_sexe_from_cheval():
         partant2 = next(p for p in body["partants"] if p["numero_corde"] == 2)
         assert partant1["sexe"] == "H"
         assert partant2["sexe"] == "F"
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_get_course_partants_expose_jockey_entraineur():
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        body = client.get("/courses/course-1").json()
+        p1 = next(p for p in body["partants"] if p["numero_corde"] == 1)
+        assert p1["jockey_nom"] == "S.PASQUIER"
+        assert p1["entraineur_nom"] == "N.CAULLERY"
     finally:
         app.dependency_overrides.clear()
 

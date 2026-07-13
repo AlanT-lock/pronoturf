@@ -37,7 +37,7 @@ function DetailRow({ row }: { row: ScoreRow }) {
 
   return (
     <tr className="border-b border-slate-800/60 bg-slate-900/40 last:border-b-0">
-      <td colSpan={5} className="px-3 py-3">
+      <td colSpan={6} className="px-3 py-3">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {entries.map(([key, detail]) => (
             <div key={key} className="rounded-md border border-slate-800 bg-slate-950/60 p-3">
@@ -71,6 +71,7 @@ export function PronosticTable({ classement }: PronosticTableProps) {
             <th className="px-3 py-2">Cheval</th>
             <th className="px-3 py-2">Score</th>
             <th className="px-3 py-2">Cote</th>
+            <th className="px-3 py-2">Confiance</th>
           </tr>
         </thead>
         <tbody>
@@ -110,6 +111,22 @@ export function PronosticTable({ classement }: PronosticTableProps) {
                   </td>
                   <td className="px-3 py-2 font-mono tabular-nums text-slate-300">
                     {row.cote ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    {typeof row.confiance === "number" ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            row.confiance >= 0.66 ? "bg-emerald-400" : row.confiance >= 0.33 ? "bg-amber-400" : "bg-red-400"
+                          }`}
+                        />
+                        <span className="font-mono tabular-nums text-xs text-slate-400">
+                          {row.nb_courses_historique ?? 0} c.
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
                   </td>
                 </tr>
                 {isExpanded && <DetailRow row={row} />}

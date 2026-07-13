@@ -146,16 +146,18 @@ def get_course(course_id: str, client=Depends(get_supabase_client)) -> dict:
     course = _get_course_or_404(client, course_id)
     partants = _get_partants_for_course(client, course_id)
     cheval_map = _cheval_nom_par_partant(client, [p["id"] for p in partants])
-    enriched = [
-        {
+    enriched = []
+    for partant in partants:
+        jockey_nom, entraineur_nom = _jockey_entraineur_noms(client, partant)
+        enriched.append({
             **partant,
             "partant_id": partant["id"],
             "cote_retenue": _retained_cote(client, partant["id"]),
             "nom_cheval": cheval_map.get(partant["id"], (None, None, None))[1],
             "sexe": cheval_map.get(partant["id"], (None, None, None))[2],
-        }
-        for partant in partants
-    ]
+            "jockey_nom": jockey_nom,
+            "entraineur_nom": entraineur_nom,
+        })
     return {"course": course, "partants": enriched}
 
 

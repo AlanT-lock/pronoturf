@@ -60,6 +60,8 @@ export function PartantsTable({ partants, onPartantSaved }: PartantsTableProps) 
           <tr className="border-b border-slate-800 bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-400">
             <th className="px-3 py-2">N°</th>
             <th className="px-3 py-2">Cheval</th>
+            <th className="px-3 py-2">Jockey</th>
+            <th className="px-3 py-2">Entraîneur</th>
             <th className="px-3 py-2">Sexe/Âge</th>
             <th className="px-3 py-2">Musique</th>
             <th className="px-3 py-2">Forme</th>
@@ -88,6 +90,8 @@ export function PartantsTable({ partants, onPartantSaved }: PartantsTableProps) 
                     <span className="ml-2 text-xs font-normal text-red-400">non partant</span>
                   )}
                 </td>
+                <td className="px-3 py-2 text-slate-300">{p.jockey_nom ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-300">{p.entraineur_nom ?? "—"}</td>
                 <td className="px-3 py-2 text-slate-300">
                   {p.sexe ?? "—"}
                   {p.age !== null ? `/${p.age}` : ""}
