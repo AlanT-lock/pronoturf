@@ -26,11 +26,15 @@ def test_new_factors_present_and_bounded():
     assert f["jockey"] == 0.4 and f["entraineur"] == 0.5
 
 
-def test_neutral_when_no_history():
+def test_no_data_factors_are_omitted_not_neutral():
     factors = compute_factors([_partant(1, perfs=[])], "plat", CTX)
     f = factors[1]
+    # les 6 facteurs dépendant de données sont ABSENTS (pas présents à 0.5)
     for key in ("taux_distance", "taux_discipline", "taux_niveau", "taux_hippodrome", "jockey", "entraineur"):
-        assert f[key] == 0.5
+        assert key not in f
+    # les 5 facteurs de base sont toujours présents
+    for key in ("forme", "taux_reussite", "ferrage_poids", "cote", "corde"):
+        assert key in f
 
 
 def test_corde_uses_place_corde_not_numero():

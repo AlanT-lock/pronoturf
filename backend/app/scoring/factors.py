@@ -3,8 +3,9 @@
 Chaque facteur disponible est calculé pour tous les partants d'une course, puis
 normalisé relativement à la course (min-max ou inverse borné) pour être comparable.
 Les facteurs de taux contextuel (distance/discipline/niveau/hippodrome) et
-jockey/entraineur sont des valeurs absolues [0,1] (0.5 quand l'historique est
-insuffisant), tandis que cote/corde/poids restent relatifs à la course (min-max).
+jockey/entraineur sont des valeurs absolues [0,1] ; ils sont OMIS pour un cheval
+quand l'historique est insuffisant (le moteur redistribue alors leur poids sur les
+facteurs présents), tandis que cote/corde/poids restent relatifs à la course (min-max).
 """
 
 from app.scoring import context_stats as cs
@@ -71,25 +72,38 @@ def compute_factors(partants: list[dict], discipline: str, course_context: dict)
     allocation = course_context.get("allocation")
     hippo = course_context.get("hippodrome")
 
-    def _or_neutral(v: float | None) -> float:
-        return 0.5 if v is None else v
-
+    # Les facteurs contextuels et jockey/entraineur ne sont inclus que lorsqu'ils reposent
+    # sur assez de données ; sinon on OMET la clé (on ne met pas 0.5). Le moteur redistribue
+    # alors leur poids par cheval sur les facteurs présents — pas de dilution à 0.5.
     factors: dict[int, dict[str, float]] = {}
     for p in actifs:
         corde = p["numero_corde"]
         inv = inv_cotes[corde]
         perfs = p.get("performances") or []
-        factors[corde] = {
+        f: dict[str, float] = {
             "forme": forme_score(p.get("musique")),
             "taux_reussite": taux(p),
             "ferrage_poids": ferrage_poids(p),
             "cote": _minmax(inv, lo_c, hi_c),
             "corde": 1.0 - _minmax(corde_value(p), lo_n, hi_n),
-            "taux_distance": _or_neutral(cs.taux_distance(perfs, dist)),
-            "taux_discipline": _or_neutral(cs.taux_discipline(perfs, discipline)),
-            "taux_niveau": _or_neutral(cs.taux_niveau(perfs, allocation)),
-            "taux_hippodrome": _or_neutral(cs.taux_hippodrome(perfs, hippo)),
-            "jockey": _or_neutral(p.get("jockey_taux")),
-            "entraineur": _or_neutral(p.get("entraineur_taux")),
         }
+        td = cs.taux_distance(perfs, dist)
+        if td is not None:
+            f["taux_distance"] = td
+        tdi = cs.taux_discipline(perfs, discipline)
+        if tdi is not None:
+            f["taux_discipline"] = tdi
+        tn = cs.taux_niveau(perfs, allocation)
+        if tn is not None:
+            f["taux_niveau"] = tn
+        th = cs.taux_hippodrome(perfs, hippo)
+        if th is not None:
+            f["taux_hippodrome"] = th
+        jt = p.get("jockey_taux")
+        if jt is not None:
+            f["jockey"] = jt
+        et = p.get("entraineur_taux")
+        if et is not None:
+            f["entraineur"] = et
+        factors[corde] = f
     return factors
