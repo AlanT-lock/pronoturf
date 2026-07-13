@@ -17,7 +17,9 @@ create table chevaux_performances (
   poids_jockey numeric,
   corde int,
   oeillere text,
-  unique (cheval_id, date_course, hippodrome, distance_m)
+  -- nulls not distinct : hippodrome/distance_m peuvent être NULL ; sans cela, Postgres
+  -- traiterait chaque NULL comme distinct et l'upsert on_conflict ne dédupliquerait pas.
+  unique nulls not distinct (cheval_id, date_course, hippodrome, distance_m)
 );
 create index chevaux_performances_cheval_idx on chevaux_performances (cheval_id);
 create index chevaux_performances_jockey_idx on chevaux_performances (jockey_nom);
