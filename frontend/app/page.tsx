@@ -2,9 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { api } from "@/lib/api";
-import type { Course, Partant } from "@/lib/types";
+import type { Course, Partant, ScoreRow } from "@/lib/types";
 import { ImportForm } from "@/components/ImportForm";
 import { PartantsTable } from "@/components/PartantsTable";
+import { PronosticTable } from "@/components/PronosticTable";
 
 export default function Home() {
   const [courseId, setCourseId] = useState<string | null>(null);
@@ -14,6 +15,9 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [etatTerrain, setEtatTerrain] = useState("");
   const [savingTerrain, setSavingTerrain] = useState(false);
+  const [classement, setClassement] = useState<ScoreRow[] | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const [scoreError, setScoreError] = useState<string | null>(null);
 
   const loadCourse = useCallback(async (id: string) => {
     setLoading(true);
@@ -28,7 +32,29 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+
+    setClassement(null);
+    try {
+      const pronostic = await api.getPronostic(id);
+      setClassement(pronostic.classement);
+    } catch {
+      // Pas encore de pronostic calculé pour cette course — ce n'est pas une erreur.
+    }
   }, []);
+
+  async function handleScore() {
+    if (!courseId) return;
+    setScoring(true);
+    setScoreError(null);
+    try {
+      const data = await api.scoreCourse(courseId);
+      setClassement(data.classement);
+    } catch (err) {
+      setScoreError(err instanceof Error ? err.message : "Erreur lors du calcul du pronostic.");
+    } finally {
+      setScoring(false);
+    }
+  }
 
   async function handleImported(id: string) {
     setCourseId(id);
@@ -116,11 +142,29 @@ export default function Home() {
                 <PartantsTable partants={partants} onPartantSaved={() => loadCourse(courseId!)} />
               </div>
 
-              {/*
-                Task 4 hook point: add "Calculer le pronostic" button here
-                (calls api.scoreCourse(courseId) / api.getPronostic(courseId))
-                plus the resulting classement table.
-              */}
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
+                    Pronostic
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleScore}
+                    disabled={scoring}
+                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {scoring ? "Calcul en cours…" : "Calculer le pronostic"}
+                  </button>
+                </div>
+
+                {scoreError && (
+                  <p className="mb-3 rounded-md border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+                    {scoreError}
+                  </p>
+                )}
+
+                {classement && <PronosticTable classement={classement} />}
+              </div>
             </section>
           )}
         </div>
