@@ -27,18 +27,18 @@ export default function Home() {
       setCourse(data.course);
       setPartants(data.partants);
       setEtatTerrain(data.course.etat_terrain ?? "");
+
+      setClassement(null);
+      try {
+        const pronostic = await api.getPronostic(id);
+        setClassement(pronostic.classement);
+      } catch {
+        // Pas encore de pronostic calculé pour cette course — ce n'est pas une erreur.
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors du chargement de la course.");
     } finally {
       setLoading(false);
-    }
-
-    setClassement(null);
-    try {
-      const pronostic = await api.getPronostic(id);
-      setClassement(pronostic.classement);
-    } catch {
-      // Pas encore de pronostic calculé pour cette course — ce n'est pas une erreur.
     }
   }, []);
 
