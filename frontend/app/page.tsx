@@ -1,174 +1,180 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { Course, Partant, ScoreRow } from "@/lib/types";
-import { ImportForm } from "@/components/ImportForm";
+import type { Course, Partant, Programme, ProgrammeCourse, ProgrammeReunion, ScoreRow } from "@/lib/types";
+import { addDays, toDdmmyyyy } from "@/lib/dates";
+import { libellePari } from "@/lib/paris";
+import { DayNav } from "@/components/DayNav";
+import { CourseBrowser } from "@/components/CourseBrowser";
 import { PartantsTable } from "@/components/PartantsTable";
 import { PronosticTable } from "@/components/PronosticTable";
 
 export default function Home() {
+  const [date, setDate] = useState<Date>(() => new Date());
+  const [programme, setProgramme] = useState<Programme | null>(null);
+  const [progLoading, setProgLoading] = useState(false);
+  const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
+
   const [courseId, setCourseId] = useState<string | null>(null);
   const [course, setCourse] = useState<Course | null>(null);
   const [partants, setPartants] = useState<Partant[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [etatTerrain, setEtatTerrain] = useState("");
-  const [savingTerrain, setSavingTerrain] = useState(false);
   const [classement, setClassement] = useState<ScoreRow[] | null>(null);
+  const [selectedParis, setSelectedParis] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const [scoring, setScoring] = useState(false);
-  const [scoreError, setScoreError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Charge le programme du jour à chaque changement de date.
+  useEffect(() => {
+    let cancelled = false;
+    setProgLoading(true);
+    setProgramme(null);
+    api
+      .getProgramme(toDdmmyyyy(date))
+      .then((p) => !cancelled && setProgramme(p))
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : "Programme indisponible."))
+      .finally(() => !cancelled && setProgLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [date]);
 
   const loadCourse = useCallback(async (id: string) => {
+    const data = await api.getCourse(id);
+    setCourse(data.course);
+    setPartants(data.partants);
+    setClassement(null);
+    try {
+      const p = await api.getPronostic(id);
+      setClassement(p.classement);
+    } catch {
+      /* pas encore de pronostic — normal */
+    }
+  }, []);
+
+  async function selectCourse(r: ProgrammeReunion, c: ProgrammeCourse) {
+    setSelected({ r: r.numero_reunion, c: c.numero_course });
+    setSelectedParis(c.paris);
     setLoading(true);
     setError(null);
+    setCourse(null);
+    setPartants([]);
+    setClassement(null);
     try {
-      const data = await api.getCourse(id);
-      setCourse(data.course);
-      setPartants(data.partants);
-      setEtatTerrain(data.course.etat_terrain ?? "");
-
-      setClassement(null);
-      try {
-        const pronostic = await api.getPronostic(id);
-        setClassement(pronostic.classement);
-      } catch {
-        // Pas encore de pronostic calculé pour cette course — ce n'est pas une erreur.
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erreur lors du chargement de la course.");
+      const { course_id } = await api.importCourse(toDdmmyyyy(date), r.numero_reunion, c.numero_course);
+      setCourseId(course_id);
+      await loadCourse(course_id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur au chargement de la course.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }
 
   async function handleScore() {
     if (!courseId) return;
     setScoring(true);
-    setScoreError(null);
+    setError(null);
     try {
       const data = await api.scoreCourse(courseId);
       setClassement(data.classement);
-    } catch (err) {
-      setScoreError(err instanceof Error ? err.message : "Erreur lors du calcul du pronostic.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur lors du calcul du pronostic.");
     } finally {
       setScoring(false);
     }
   }
 
-  async function handleImported(id: string) {
-    setCourseId(id);
-    await loadCourse(id);
-  }
-
-  async function handleEtatTerrainBlur() {
-    if (!courseId || !course) return;
-    if (etatTerrain === (course.etat_terrain ?? "")) return;
-    setSavingTerrain(true);
-    try {
-      await api.patchCourse(courseId, { etat_terrain: etatTerrain });
-      setCourse({ ...course, etat_terrain: etatTerrain });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Échec de l'enregistrement de l'état du terrain.");
-    } finally {
-      setSavingTerrain(false);
-    }
-  }
-
   return (
-    <div className="min-h-full bg-slate-950 text-slate-100">
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        <header className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
-            pronoturf <span className="text-slate-500">—</span>{" "}
-            <span className="text-emerald-400">pronostic</span>
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Import de course, saisie des partants et calcul du pronostic.
-          </p>
-        </header>
+    <div className="min-h-full bg-white text-slate-900">
+      {/* Barre supérieure */}
+      <header className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
+        <div className="text-[15px] font-extrabold tracking-tight text-green-700">
+          pronoturf <span className="font-bold text-slate-300">· le turf, en clair</span>
+        </div>
+        <DayNav date={date} onPrev={() => setDate((d) => addDays(d, -1))} onNext={() => setDate((d) => addDays(d, 1))} />
+      </header>
 
-        <div className="flex flex-col gap-8">
-          <ImportForm onImported={handleImported} />
+      {error && (
+        <p className="mx-5 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+      )}
 
-          {error && (
-            <p className="rounded-md border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
-              {error}
+      {/* Dashboard 3 colonnes */}
+      <div className="grid grid-cols-1 lg:grid-cols-[240px_1fr_360px]">
+        {/* Colonne gauche : courses */}
+        <aside className="border-b border-slate-200 bg-slate-50/60 p-3.5 lg:border-b-0 lg:border-r lg:min-h-[calc(100vh-57px)]">
+          <CourseBrowser programme={programme} loading={progLoading} selected={selected} onSelect={selectCourse} />
+        </aside>
+
+        {/* Colonne centre : pronostic */}
+        <main className="p-4">
+          {!course && !loading && (
+            <p className="mt-10 text-center text-sm text-slate-400">
+              Sélectionne une course à gauche pour voir le pronostic.
             </p>
           )}
-
-          {loading && <p className="text-sm text-slate-400">Chargement…</p>}
-
+          {loading && <p className="mt-10 text-center text-sm text-slate-400">Chargement de la course…</p>}
           {course && (
-            <section className="flex flex-col gap-6">
-              <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-5">
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
+            <section className="flex flex-col gap-5">
+              <div className="flex items-center justify-between gap-4">
+                <h2 className="text-sm font-extrabold text-slate-900">
                   Course {course.numero_course}
+                  <span className="ml-2 font-medium text-slate-500">
+                    · {course.discipline} · {course.distance_m} m
+                  </span>
                 </h2>
-                <div className="flex flex-wrap items-end gap-6 text-sm">
-                  <div>
-                    <span className="block text-xs text-slate-500">Discipline</span>
-                    <span className="font-medium text-slate-100">{course.discipline}</span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">Distance</span>
-                    <span className="font-mono tabular-nums font-medium text-slate-100">
-                      {course.distance_m} m
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-xs text-slate-500">Statut</span>
-                    <span className="font-medium text-slate-100">{course.statut}</span>
-                  </div>
-                  <label className="flex flex-col gap-1">
-                    <span className="text-xs text-slate-500">État du terrain</span>
-                    <input
-                      type="text"
-                      value={etatTerrain}
-                      onChange={(e) => setEtatTerrain(e.target.value)}
-                      onBlur={handleEtatTerrainBlur}
-                      disabled={savingTerrain}
-                      placeholder="ex. bon, souple…"
-                      className="w-40 rounded-md border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm text-slate-100 outline-none focus:border-emerald-500 disabled:opacity-50"
-                    />
-                  </label>
-                </div>
+                <button
+                  type="button"
+                  onClick={handleScore}
+                  disabled={scoring}
+                  className="rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                >
+                  {scoring ? "Calcul en cours…" : "Calculer le pronostic"}
+                </button>
               </div>
 
               <div>
-                <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">
-                  Partants
-                </h2>
-                <PartantsTable partants={partants} onPartantSaved={() => loadCourse(courseId!)} />
+                <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Partants</div>
+                <PartantsTable partants={partants} onPartantSaved={() => courseId && loadCourse(courseId)} />
               </div>
 
-              <div>
-                <div className="mb-3 flex items-center justify-between gap-4">
-                  <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-400">
-                    Pronostic
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={handleScore}
-                    disabled={scoring}
-                    className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {scoring ? "Calcul en cours…" : "Calculer le pronostic"}
-                  </button>
+              {classement && (
+                <div>
+                  <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Pronostic</div>
+                  <PronosticTable classement={classement} />
                 </div>
-
-                {scoreError && (
-                  <p className="mb-3 rounded-md border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
-                    {scoreError}
-                  </p>
-                )}
-
-                {classement && <PronosticTable classement={classement} />}
-              </div>
+              )}
             </section>
           )}
-        </div>
-      </main>
+        </main>
+
+        {/* Colonne droite : analyse IA (Plan B) */}
+        <aside className="border-t border-slate-200 bg-slate-50/40 p-4 lg:border-t-0 lg:border-l">
+          <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Analyse IA</div>
+          {course ? (
+            <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-400">
+              L'analyse IA (paris, confiance, avis) arrive au prochain incrément.
+              {selectedParis.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {selectedParis.map((p) => (
+                    <span
+                      key={p}
+                      className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                        p === "QUINTE_PLUS" ? "bg-green-600 text-white" : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {libellePari(p)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400">—</p>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
