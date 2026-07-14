@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from app import bet_types
 from app.models import (
     CourseNormalized,
     CoteNormalized,
@@ -144,3 +145,34 @@ def normalize_performances(raw_perf: dict) -> dict[int, list[PerformanceNormaliz
             )
         result[num_pmu] = perfs
     return result
+
+
+def normalize_programme(programme: dict) -> dict:
+    reunions = []
+    for r in programme["programme"]["reunions"]:
+        courses = []
+        for c in r.get("courses", []):
+            codes = bet_types.map_paris([p.get("typePari") for p in c.get("paris", [])])
+            raw_disc = c.get("discipline")
+            heure = c.get("heureDepart")
+            courses.append({
+                "numero_course": c["numOrdre"],
+                "discipline": _DISCIPLINE_MAP.get(raw_disc, raw_disc.lower() if raw_disc else None),
+                "distance_m": c.get("distance"),
+                "heure_depart": (
+                    datetime.fromtimestamp(heure / 1000, tz=timezone.utc).isoformat()
+                    if heure is not None else None
+                ),
+                "statut": "terminee" if c.get("arriveeDefinitive") else "a_venir",
+                "nombre_partants": c.get("nombreDeclaresPartants"),
+                "allocation": c.get("montantPrix"),
+                "paris": codes,
+                "est_quinte": bet_types.est_quinte(codes),
+            })
+        reunions.append({
+            "numero_reunion": r["numOfficiel"],
+            "hippodrome": r["hippodrome"]["libelleCourt"],
+            "pays": r["pays"]["code"],
+            "courses": courses,
+        })
+    return {"reunions": reunions}
