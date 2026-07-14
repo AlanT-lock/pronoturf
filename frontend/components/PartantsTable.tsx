@@ -42,7 +42,7 @@ function FerrageCell({ partant, onSaved }: { partant: Partant; onSaved: () => vo
         onBlur={save}
         disabled={saving}
         placeholder="—"
-        className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-xs text-slate-100 outline-none focus:border-emerald-500 disabled:opacity-50"
+        className="w-20 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 outline-none focus:border-green-600 disabled:opacity-50"
       />
       {error && <span className="text-[10px] text-red-400">{error}</span>}
     </div>
@@ -54,10 +54,10 @@ export function PartantsTable({ partants, onPartantSaved }: PartantsTableProps) 
   const showReduction = partants.some((p) => p.reduction_kilometrique !== null);
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-800">
+    <div className="overflow-x-auto rounded-lg border border-slate-200">
       <table className="w-full border-collapse text-sm">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-900/80 text-left text-xs uppercase tracking-wide text-slate-400">
+          <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
             <th className="px-3 py-2">N°</th>
             <th className="px-3 py-2">Cheval</th>
             <th className="px-3 py-2">Jockey</th>
@@ -77,43 +77,43 @@ export function PartantsTable({ partants, onPartantSaved }: PartantsTableProps) 
             return (
               <tr
                 key={p.partant_id}
-                className={`border-b border-slate-800/60 last:border-b-0 ${
-                  i % 2 === 1 ? "bg-slate-900/30" : ""
+                className={`border-b border-slate-100 last:border-b-0 ${
+                  i % 2 === 1 ? "bg-slate-50/60" : ""
                 } ${nonPartant ? "opacity-50" : ""}`}
               >
-                <td className="px-3 py-2 font-mono tabular-nums text-slate-300">
+                <td className="px-3 py-2 font-mono tabular-nums text-slate-600">
                   {p.numero_corde}
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-100">
+                <td className="px-3 py-2 font-medium text-slate-900">
                   {p.nom_cheval}
                   {nonPartant && (
-                    <span className="ml-2 text-xs font-normal text-red-400">non partant</span>
+                    <span className="ml-2 text-xs font-normal text-red-500">non partant</span>
                   )}
                 </td>
-                <td className="px-3 py-2 text-slate-300">{p.jockey_nom ?? "—"}</td>
-                <td className="px-3 py-2 text-slate-300">{p.entraineur_nom ?? "—"}</td>
-                <td className="px-3 py-2 text-slate-300">
+                <td className="px-3 py-2 text-slate-600">{p.jockey_nom ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-600">{p.entraineur_nom ?? "—"}</td>
+                <td className="px-3 py-2 text-slate-600">
                   {p.sexe ?? "—"}
                   {p.age !== null ? `/${p.age}` : ""}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs text-slate-300">{p.musique ?? "—"}</td>
-                <td className="px-3 py-2 font-mono tabular-nums text-xs text-slate-300">
+                <td className="px-3 py-2 font-mono text-xs text-slate-600">{p.musique ?? "—"}</td>
+                <td className="px-3 py-2 font-mono tabular-nums text-xs text-slate-600">
                   {formeSuffixe(p.nombre_courses, p.nombre_victoires, p.nombre_places)}
                 </td>
                 {showPoids && (
-                  <td className="px-3 py-2 font-mono tabular-nums text-slate-300">
+                  <td className="px-3 py-2 font-mono tabular-nums text-slate-600">
                     {p.poids_kg !== null ? `${p.poids_kg} kg` : "—"}
                   </td>
                 )}
                 {showReduction && (
-                  <td className="px-3 py-2 font-mono tabular-nums text-slate-300">
+                  <td className="px-3 py-2 font-mono tabular-nums text-slate-600">
                     {p.reduction_kilometrique !== null ? p.reduction_kilometrique : "—"}
                   </td>
                 )}
                 <td className="px-3 py-2">
                   <FerrageCell partant={p} onSaved={onPartantSaved} />
                 </td>
-                <td className="px-3 py-2 font-mono tabular-nums text-slate-300">
+                <td className="px-3 py-2 font-mono tabular-nums text-slate-600">
                   {p.cote_retenue !== null ? p.cote_retenue : "—"}
                 </td>
               </tr>
