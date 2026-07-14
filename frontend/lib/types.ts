@@ -39,3 +39,24 @@ export type ScoreRow = {
   confiance?: number;
   nb_courses_historique?: number;
 };
+
+export type ProgrammeCourse = {
+  numero_course: number;
+  discipline: string | null;
+  distance_m: number | null;
+  heure_depart: string | null;
+  statut: string;
+  nombre_partants: number | null;
+  allocation: number | null;
+  paris: string[];
+  est_quinte: boolean;
+};
+
+export type ProgrammeReunion = {
+  numero_reunion: number;
+  hippodrome: string;
+  pays: string;
+  courses: ProgrammeCourse[];
+};
+
+export type Programme = { date: string; reunions: ProgrammeReunion[] };

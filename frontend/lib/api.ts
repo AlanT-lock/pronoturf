@@ -1,4 +1,4 @@
-import type { Course, Partant, ScoreRow } from "./types";
+import type { Course, Partant, Programme, ScoreRow } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -38,4 +38,5 @@ export const api = {
     req<{ course_id: string; classement: ScoreRow[] }>(`/courses/${id}/score`, { method: "POST" }),
   getPronostic: (id: string) =>
     req<{ course_id: string; classement: ScoreRow[] }>(`/courses/${id}/pronostic`),
+  getProgramme: (date: string) => req<Programme>(`/programme/${date}`),
 };

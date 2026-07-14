@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "pronoturf — pronostic",
-  description: "Outil local de pronostic hippique",
+  title: "pronoturf — le turf, en clair",
+  description: "Plateforme locale de pronostic hippique",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full bg-white text-slate-900 flex flex-col">{children}</body>
     </html>
   );
 }
