@@ -4,7 +4,8 @@ from pydantic import BaseModel
 
 from app.pmu_client import fetch_participants, fetch_performances_detaillees, fetch_programme
 from app.pmu_normalizer import (
-    find_course_in_programme, normalize_course, normalize_partants, normalize_performances,
+    find_course_in_programme, normalize_course, normalize_partants,
+    normalize_performances, normalize_programme,
 )
 from app.scoring.routes import router as scoring_router
 from app.supabase_client import get_supabase_client
@@ -24,6 +25,12 @@ app.add_middleware(
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/programme/{date}")
+async def get_programme(date: str) -> dict:
+    programme = await fetch_programme(date)
+    return {"date": date, **normalize_programme(programme)}
 
 
 class ImportCourseRequest(BaseModel):
