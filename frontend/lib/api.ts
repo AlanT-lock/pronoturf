@@ -1,4 +1,4 @@
-import type { AnalyseIA, Course, Partant, Programme, ScoreRow } from "./types";
+import type { AnalyseIA, Backtest, Course, Partant, Programme, ScoreRow } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -45,4 +45,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ paris }),
     }),
+  getBacktest: () => req<Backtest>("/backtest"),
+  captureResultats: (id: string) =>
+    req<{ course_id: string; captured: boolean; statut: string; nb_resultats: number }>(
+      `/courses/${id}/resultats`,
+      { method: "POST" },
+    ),
 };

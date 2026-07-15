@@ -84,3 +84,19 @@ export type AnalyseIA = {
   confiance_globale: number | null;
   created_at?: string;
 };
+
+export type CalibrationBin = {
+  bucket: string;
+  n: number;
+  confiance_moyenne: number;
+  taux_top1_reel: number;
+};
+
+export type Backtest = {
+  nb_courses: number;
+  precision_top1: number | null;
+  precision_top3: number | null;
+  brier_confiance: number | null;
+  calibration: CalibrationBin[];
+  calibration_gate: { disponible: boolean; nb_paires: number; seuil: number };
+};
