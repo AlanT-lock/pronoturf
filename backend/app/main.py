@@ -8,11 +8,13 @@ from app.pmu_normalizer import (
     normalize_performances, normalize_programme,
 )
 from app.scoring.routes import router as scoring_router
+from app.analyse.routes import router as analyse_router
 from app.supabase_client import get_supabase_client
 from app.supabase_writer import SupabaseWriter
 
 app = FastAPI(title="pronoturf")
 app.include_router(scoring_router)
+app.include_router(analyse_router)
 
 app.add_middleware(
     CORSMiddleware,
