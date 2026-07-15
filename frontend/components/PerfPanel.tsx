@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import type { Backtest } from "@/lib/types";
+import { libellePari } from "@/lib/paris";
 
 function pct(x: number | null): string {
   return x === null ? "—" : `${Math.round(x * 100)}%`;
@@ -93,6 +94,42 @@ export function PerfPanel() {
                         Données insuffisantes ({data.calibration_gate.nb_paires}/
                         {data.calibration_gate.seuil} paires) — la calibration s'activera en accumulant des résultats.
                       </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="mb-1 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+                      Paris IA · {data.paris.nb_analyses_resolues} analyse
+                      {data.paris.nb_analyses_resolues > 1 ? "s" : ""} résolue
+                      {data.paris.nb_analyses_resolues > 1 ? "s" : ""}
+                    </div>
+                    {data.paris.nb_analyses_resolues === 0 ? (
+                      <p className="text-xs text-slate-400">
+                        Aucune analyse dont la course a un résultat pour l'instant.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1">
+                          {data.paris.par_type.map((s) => (
+                            <div key={s.type_pari} className="flex items-center gap-2 text-[11px]">
+                              <span className="w-24 truncate text-slate-600">{libellePari(s.type_pari)}</span>
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-green-100">
+                                <div className="h-full bg-green-600" style={{ width: `${s.taux_reussite * 100}%` }} />
+                              </div>
+                              <span className="w-14 text-right font-mono tabular-nums text-slate-600">
+                                {pct(s.taux_reussite)} · n{s.nb}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[10px] text-slate-500">
+                          {data.paris.par_niveau.map((s) => (
+                            <span key={s.niveau} className="rounded-md bg-slate-100 px-2 py-0.5 font-mono tabular-nums">
+                              {s.niveau} {pct(s.taux_reussite)} (n{s.nb})
+                            </span>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </>
