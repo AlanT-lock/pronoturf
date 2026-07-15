@@ -17,6 +17,7 @@ import { CourseBrowser } from "@/components/CourseBrowser";
 import { PartantsTable } from "@/components/PartantsTable";
 import { PronosticTable } from "@/components/PronosticTable";
 import { AnalyseIA } from "@/components/AnalyseIA";
+import { PerfPanel } from "@/components/PerfPanel";
 
 export default function Home() {
   const [date, setDate] = useState<Date>(() => new Date());
@@ -125,7 +126,10 @@ export default function Home() {
         <div className="text-[15px] font-extrabold tracking-tight text-green-700">
           pronoturf <span className="font-bold text-slate-300">· le turf, en clair</span>
         </div>
-        <DayNav date={date} onPrev={() => setDate((d) => addDays(d, -1))} onNext={() => setDate((d) => addDays(d, 1))} />
+        <div className="flex items-center gap-3">
+          <DayNav date={date} onPrev={() => setDate((d) => addDays(d, -1))} onNext={() => setDate((d) => addDays(d, 1))} />
+          <PerfPanel />
+        </div>
       </header>
 
       {error && (
