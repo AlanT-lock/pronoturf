@@ -386,3 +386,16 @@ def test_pronostic_shape_matches_score_shape():
         assert {"partant_id", "numero_corde", "nom_cheval", "score_total", "rang", "details_facteurs"} <= set(row)
     finally:
         app.dependency_overrides.clear()
+
+
+def test_score_classement_expose_jockey_entraineur():
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        body = client.post("/courses/course-1/score").json()
+        top = next(r for r in body["classement"] if r["numero_corde"] == 1)
+        assert top["jockey_nom"] == "S.PASQUIER"
+        assert top["entraineur_nom"] == "N.CAULLERY"
+    finally:
+        app.dependency_overrides.clear()

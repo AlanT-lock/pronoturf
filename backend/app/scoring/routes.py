@@ -194,8 +194,9 @@ def patch_partant(partant_id: str, body: PartantPatch, client=Depends(get_supaba
     return client.table("partants").update(updates).eq("id", partant_id).execute().data[0]
 
 
-@router.post("/courses/{course_id}/score")
-def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
+def score_and_persist(client, course_id: str) -> list[dict]:
+    """Score la course, remplace scores_pronostic, renvoie le classement enrichi
+    (nom_cheval, partant_id, jockey_nom, entraineur_nom). Lève 404 si course absente."""
     course = _get_course_or_404(client, course_id)
     partants = _get_partants_for_course(client, course_id)
     partant_id_by_corde = {p["numero_corde"]: p["id"] for p in partants}
@@ -228,18 +229,24 @@ def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
         client.table("scores_pronostic").insert(rows).execute()
 
     cheval_map = _cheval_nom_par_partant(client, list(partant_id_by_corde.values()))
-    enriched_classement = [
-        {
+    jke_by_corde = {p["numero_corde"]: _jockey_entraineur_noms(client, p) for p in partants}
+    enriched = []
+    for row in classement:
+        corde = row["numero_corde"]
+        jockey_nom, entraineur_nom = jke_by_corde.get(corde, (None, None))
+        enriched.append({
             **row,
-            "partant_id": partant_id_by_corde[row["numero_corde"]],
-            "nom_cheval": cheval_map.get(
-                partant_id_by_corde[row["numero_corde"]], (None, None, None)
-            )[1],
-        }
-        for row in classement
-    ]
+            "partant_id": partant_id_by_corde[corde],
+            "nom_cheval": cheval_map.get(partant_id_by_corde[corde], (None, None, None))[1],
+            "jockey_nom": jockey_nom,
+            "entraineur_nom": entraineur_nom,
+        })
+    return enriched
 
-    return {"course_id": course_id, "classement": enriched_classement}
+
+@router.post("/courses/{course_id}/score")
+def compute_score(course_id: str, client=Depends(get_supabase_client)) -> dict:
+    return {"course_id": course_id, "classement": score_and_persist(client, course_id)}
 
 
 @router.get("/courses/{course_id}/pronostic")
