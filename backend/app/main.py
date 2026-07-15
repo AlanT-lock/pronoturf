@@ -65,5 +65,6 @@ async def import_course(request: ImportCourseRequest, supabase_client=Depends(ge
 
     if course.statut == "terminee":
         writer.save_entraineur_resultats(course, partants, result["cheval_id_by_corde"])
+        writer.save_resultats(result["course_id"], partants, result["partant_id_by_corde"])
 
     return {"course_id": result["course_id"], "partant_ids": result["partant_ids"]}
