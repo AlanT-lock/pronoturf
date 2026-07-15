@@ -2,13 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import type { Course, Partant, Programme, ProgrammeCourse, ProgrammeReunion, ScoreRow } from "@/lib/types";
+import type {
+  AnalyseIA as AnalyseIAType,
+  Course,
+  Partant,
+  Programme,
+  ProgrammeCourse,
+  ProgrammeReunion,
+  ScoreRow,
+} from "@/lib/types";
 import { addDays, toDdmmyyyy } from "@/lib/dates";
-import { libellePari } from "@/lib/paris";
 import { DayNav } from "@/components/DayNav";
 import { CourseBrowser } from "@/components/CourseBrowser";
 import { PartantsTable } from "@/components/PartantsTable";
 import { PronosticTable } from "@/components/PronosticTable";
+import { AnalyseIA } from "@/components/AnalyseIA";
 
 export default function Home() {
   const [date, setDate] = useState<Date>(() => new Date());
@@ -24,6 +32,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [scoring, setScoring] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [analyse, setAnalyse] = useState<AnalyseIAType | null>(null);
+  const [analyseLoading, setAnalyseLoading] = useState(false);
 
   // Charge le programme du jour à chaque changement de date.
   useEffect(() => {
@@ -45,11 +55,18 @@ export default function Home() {
     setCourse(data.course);
     setPartants(data.partants);
     setClassement(null);
+    setAnalyse(null);
     try {
       const p = await api.getPronostic(id);
       setClassement(p.classement);
     } catch {
       /* pas encore de pronostic — normal */
+    }
+    try {
+      const a = await api.getAnalyse(id);
+      setAnalyse(a);
+    } catch {
+      /* pas encore d'analyse — normal (404) */
     }
   }, []);
 
@@ -61,6 +78,7 @@ export default function Home() {
     setCourse(null);
     setPartants([]);
     setClassement(null);
+    setAnalyse(null);
     try {
       const { course_id } = await api.importCourse(toDdmmyyyy(date), r.numero_reunion, c.numero_course);
       setCourseId(course_id);
@@ -83,6 +101,20 @@ export default function Home() {
       setError(e instanceof Error ? e.message : "Erreur lors du calcul du pronostic.");
     } finally {
       setScoring(false);
+    }
+  }
+
+  async function runAnalyse(force: boolean) {
+    if (!courseId) return;
+    setAnalyseLoading(true);
+    setError(null);
+    try {
+      const a = await api.analyseCourse(courseId, selectedParis, force);
+      setAnalyse(a);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur lors de l'analyse IA.");
+    } finally {
+      setAnalyseLoading(false);
     }
   }
 
@@ -149,27 +181,19 @@ export default function Home() {
           )}
         </main>
 
-        {/* Colonne droite : analyse IA (Plan B) */}
+        {/* Colonne droite : analyse IA */}
         <aside className="border-t border-slate-200 bg-slate-50/40 p-4 lg:border-t-0 lg:border-l">
-          <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Analyse IA</div>
+          <div className="mb-2 text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+            Analyse IA
+          </div>
           {course ? (
-            <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-400">
-              L'analyse IA (paris, confiance, avis) arrive au prochain incrément.
-              {selectedParis.length > 0 && (
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {selectedParis.map((p) => (
-                    <span
-                      key={p}
-                      className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                        p === "QUINTE_PLUS" ? "bg-green-600 text-white" : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {libellePari(p)}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AnalyseIA
+              analyse={analyse}
+              loading={analyseLoading}
+              onAnalyser={() => runAnalyse(false)}
+              onReanalyser={() => runAnalyse(true)}
+              disabled={analyseLoading}
+            />
           ) : (
             <p className="text-sm text-slate-400">—</p>
           )}
