@@ -99,4 +99,12 @@ export type Backtest = {
   brier_confiance: number | null;
   calibration: CalibrationBin[];
   calibration_gate: { disponible: boolean; nb_paires: number; seuil: number };
+  paris: {
+    nb_analyses_resolues: number;
+    par_type: BetTypeStat[];
+    par_niveau: BetNiveauStat[];
+  };
 };
+
+export type BetTypeStat = { type_pari: string; nb: number; taux_reussite: number };
+export type BetNiveauStat = { niveau: string; nb: number; taux_reussite: number };
