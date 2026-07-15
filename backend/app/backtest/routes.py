@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.backtest import evaluate as ev
 from app.backtest.calibration import calibrate_confidence
+from app.backtest.paris import agreger_paris, resoudre_analyse
 from app.pmu_client import fetch_participants, fetch_programme
 from app.pmu_normalizer import find_course_in_programme, normalize_course, normalize_partants
 from app.scoring.routes import _get_course_or_404
@@ -99,6 +100,42 @@ def _evaluations(client) -> list[dict]:
     return evaluations
 
 
+def _paris_resolus(client):
+    """Résout les paris de chaque analyse dont la course a un résultat.
+    Renvoie (resolus: list, nb_courses_resolues: int)."""
+    analyses = client.table("analyses_llm").select("course_id, recommandations").execute().data
+    resultats = client.table("resultats").select("course_id, partant_id, position_arrivee").execute().data
+    if not analyses or not resultats:
+        return [], 0
+
+    corde = _corde_by_partant(client, [r["partant_id"] for r in resultats])
+    arrivee_by_course: dict[str, dict[int, int]] = {}
+    for r in resultats:
+        c = corde.get(r["partant_id"])
+        if c is not None and r["position_arrivee"] is not None:
+            arrivee_by_course.setdefault(r["course_id"], {})[c] = r["position_arrivee"]
+
+    course_ids = [a["course_id"] for a in analyses if a["course_id"] in arrivee_by_course]
+    nb_partants: dict[str, int] = {}
+    if course_ids:
+        for p in client.table("partants").select("course_id").in_("course_id", course_ids).execute().data:
+            nb_partants[p["course_id"]] = nb_partants.get(p["course_id"], 0) + 1
+
+    resolus = []
+    courses_resolues = set()
+    for a in analyses:
+        cid = a["course_id"]
+        if cid not in arrivee_by_course:
+            continue
+        arrivee = arrivee_by_course[cid]
+        items = resoudre_analyse(a.get("recommandations") or [], arrivee, nb_partants.get(cid, len(arrivee)))
+        items = [it for it in items if it["gagnant"] is not None]
+        if items:
+            courses_resolues.add(cid)
+        resolus.extend(items)
+    return resolus, len(courses_resolues)
+
+
 def _pairs(evaluations: list[dict]) -> list[tuple]:
     return [
         (e["confiance_top1"], e["top1_hit"])
@@ -113,10 +150,17 @@ def get_backtest(client=Depends(get_supabase_client)) -> dict:
     agg = ev.aggregate(evaluations)
     pairs = _pairs(evaluations)
     gate = calibrate_confidence(pairs)
+    resolus, nb_analyses_resolues = _paris_resolus(client)
+    par_type, par_niveau = agreger_paris(resolus)
     return {
         **agg,
         "calibration": ev.calibration_bins(pairs),
         "calibration_gate": {k: gate[k] for k in ("disponible", "nb_paires", "seuil") if k in gate},
+        "paris": {
+            "nb_analyses_resolues": nb_analyses_resolues,
+            "par_type": par_type,
+            "par_niveau": par_niveau,
+        },
     }
 
 
