@@ -7,6 +7,7 @@ from app.pmu_normalizer import (
     find_course_in_programme, normalize_course, normalize_partants,
     normalize_performances, normalize_programme,
 )
+from app.config import settings
 from app.scoring.routes import router as scoring_router
 from app.analyse.routes import router as analyse_router
 from app.backtest.routes import router as backtest_router
@@ -20,7 +21,7 @@ app.include_router(backtest_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",") if o.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
 )
