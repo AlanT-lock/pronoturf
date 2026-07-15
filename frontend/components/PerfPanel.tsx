@@ -41,7 +41,7 @@ export function PerfPanel() {
         Perf
       </button>
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div className="absolute right-0 z-10 mt-2 w-72 max-w-[calc(100vw-1.5rem)] rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
           {loading && <p className="text-sm text-slate-400">Chargement…</p>}
           {error && <p className="text-sm text-red-600">{error}</p>}
           {data && !loading && !error && (
