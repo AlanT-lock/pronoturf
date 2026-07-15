@@ -57,6 +57,7 @@ class SupabaseWriter:
 
         partant_ids = []
         cheval_id_by_corde = {}
+        partant_id_by_corde = {}
         for partant in partants:
             cheval_row = (
                 self._client.table("chevaux")
@@ -126,6 +127,7 @@ class SupabaseWriter:
                 .data[0]
             )
             partant_ids.append(partant_row["id"])
+            partant_id_by_corde[partant.numero_corde] = partant_row["id"]
 
             for cote in partant.cotes:
                 self._client.table("cotes").upsert(
@@ -139,7 +141,8 @@ class SupabaseWriter:
                 ).execute()
 
         return {"course_id": course_row["id"], "partant_ids": partant_ids,
-                "cheval_id_by_corde": cheval_id_by_corde}
+                "cheval_id_by_corde": cheval_id_by_corde,
+                "partant_id_by_corde": partant_id_by_corde}
 
     def save_performances(self, perf_by_num_pmu, cheval_id_by_corde) -> int:
         n = 0
@@ -187,6 +190,27 @@ class SupabaseWriter:
                     "status_arrivee": None,
                 },
                 on_conflict="entraineur_nom,cheval_id,date_course",
+            ).execute()
+            n += 1
+        return n
+
+    def save_resultats(self, course_id, partants, partant_id_by_corde) -> int:
+        """Upsert l'arrivée réelle des partants arrivés (position_arrivee non None)."""
+        n = 0
+        for partant in partants:
+            if partant.position_arrivee is None:
+                continue
+            partant_id = partant_id_by_corde.get(partant.numero_corde)
+            if partant_id is None:
+                continue
+            self._client.table("resultats").upsert(
+                {
+                    "course_id": course_id,
+                    "partant_id": partant_id,
+                    "position_arrivee": partant.position_arrivee,
+                    "disqualifie": False,
+                },
+                on_conflict="partant_id",
             ).execute()
             n += 1
         return n
