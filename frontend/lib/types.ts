@@ -60,3 +60,27 @@ export type ProgrammeReunion = {
 };
 
 export type Programme = { date: string; reunions: ProgrammeReunion[] };
+
+export type Recommandation = {
+  type_pari: string;
+  selection: number[];
+  base: number[];
+  tournant: number[];
+  confiance: number;
+  niveau: string;
+  avis: string;
+};
+
+export type CoupDeCoeur = { numero_corde: number; raison: string };
+
+export type AnalyseIA = {
+  id: string;
+  course_id: string;
+  modele: string;
+  source: string;
+  lecture_globale: string | null;
+  recommandations: Recommandation[];
+  coup_de_coeur_value: CoupDeCoeur | null;
+  confiance_globale: number | null;
+  created_at?: string;
+};
