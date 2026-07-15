@@ -106,6 +106,8 @@ class FakeStore:
                 },
             ],
             "scores_pronostic": [],
+            "resultats": [],
+            "backtest_resultats": [],
             "analyses_llm": [],
             "analyses_llm_historique": [],
             "chevaux_performances": [],
