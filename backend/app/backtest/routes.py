@@ -130,8 +130,15 @@ def post_backtest_snapshot(client=Depends(get_supabase_client)) -> dict:
     pond = client.table("ponderations_config").select("id").eq("actif", True).limit(1).execute().data
     ponderation_id = pond[0]["id"] if pond else None
 
-    # Période : min/max des dates de réunion des courses couvertes.
-    course_ids = list({s["course_id"] for s in client.table("scores_pronostic").select("course_id").execute().data})
+    # Période = dates des courses RÉELLEMENT couvertes (pronostic ET résultat),
+    # pas toutes les courses scorées.
+    scored = {s["course_id"] for s in client.table("scores_pronostic").select("course_id").execute().data}
+    resulted = {
+        r["course_id"]
+        for r in client.table("resultats").select("course_id, position_arrivee").execute().data
+        if r["position_arrivee"] is not None
+    }
+    course_ids = list(scored & resulted)
     dates = []
     if course_ids:
         courses = client.table("courses").select("reunion_id").in_("id", course_ids).execute().data

@@ -131,6 +131,46 @@ def test_post_backtest_snapshot_persiste():
         app.dependency_overrides.clear()
 
 
+def test_snapshot_periode_ne_couvre_que_les_courses_resultees():
+    store = FakeStore()
+    _seed_scored_course_with_result(store)
+    # Course-2 : scorée mais PAS résultée, réunion plus tardive -> ne doit pas élargir la période.
+    store.tables["reunions"].append(
+        {"id": "r2", "hippodrome_id": "h1", "date": "2026-08-01", "numero_reunion": 2}
+    )
+    store.tables["courses"].append(
+        {
+            "id": "course-2", "numero_course": 1, "discipline": "plat", "statut": "terminee",
+            "distance_m": 1200, "reunion_id": "r2", "etat_terrain": None, "allocation": 20000,
+        }
+    )
+    store.tables["scores_pronostic"].append(
+        {"id": "s3", "course_id": "course-2", "partant_id": "p1", "ponderation_config_id": "pond-1",
+         "score_total": 0.5, "rang_pronostique": 1, "details_facteurs": {}, "confiance": 0.5,
+         "nb_courses_historique": 1}
+    )
+    _override(store)
+    try:
+        r = TestClient(app).post("/backtest/snapshot")
+        assert r.status_code == 200
+        row = store.tables["backtest_resultats"][0]
+        assert row["periode_debut"] == "2026-07-13"
+        assert row["periode_fin"] == "2026-07-13"
+        assert row["nb_courses"] == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_snapshot_400_si_rien_a_evaluer():
+    store = FakeStore()
+    _override(store)
+    try:
+        r = TestClient(app).post("/backtest/snapshot")
+        assert r.status_code == 400
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_post_resultats_404_course_absente():
     store = FakeStore()
     _override(store)
