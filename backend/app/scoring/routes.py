@@ -229,6 +229,7 @@ def score_and_persist(client, course_id: str) -> list[dict]:
         client.table("scores_pronostic").insert(rows).execute()
 
     cheval_map = _cheval_nom_par_partant(client, list(partant_id_by_corde.values()))
+    cote_map = _retained_cotes_par_partant(client, list(partant_id_by_corde.values()))
     jke_by_corde = {p["numero_corde"]: _jockey_entraineur_noms(client, p) for p in partants}
     enriched = []
     for row in classement:
@@ -240,6 +241,7 @@ def score_and_persist(client, course_id: str) -> list[dict]:
             "nom_cheval": cheval_map.get(partant_id_by_corde[corde], (None, None, None))[1],
             "jockey_nom": jockey_nom,
             "entraineur_nom": entraineur_nom,
+            "cote": cote_map.get(partant_id_by_corde[corde]),
         })
     return enriched
 

@@ -237,3 +237,15 @@ def test_score_classement_expose_jockey_entraineur():
         assert top["entraineur_nom"] == "N.CAULLERY"
     finally:
         app.dependency_overrides.clear()
+
+
+def test_score_classement_expose_cote():
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        body = client.post("/courses/course-1/score").json()
+        row1 = next(r for r in body["classement"] if r["numero_corde"] == 1)
+        assert row1["cote"] == 2.0
+    finally:
+        app.dependency_overrides.clear()

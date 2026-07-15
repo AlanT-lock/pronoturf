@@ -40,6 +40,34 @@ def test_post_analyse_cree_via_repli_sans_cle(monkeypatch):
         app.dependency_overrides.clear()
 
 
+def test_post_analyse_repli_calcule_value_a_partir_des_cotes(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    store = FakeStore()
+    _override(store)
+    try:
+        client = TestClient(app)
+        resp = client.post(
+            "/courses/course-1/analyse",
+            json={"paris": ["SIMPLE_GAGNANT"]},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+
+        # Le repli déterministe doit avoir trouvé un value bet (cotes 2.0 / 18.0
+        # avec des scores différents -> value non nulle pour au moins un cheval).
+        assert body["coup_de_coeur_value"] is not None
+        assert body["coup_de_coeur_value"]["numero_corde"] in (1, 2)
+
+        chevaux = body["input_snapshot"]["signaux"]["chevaux"]
+        assert len(chevaux) == 2
+        for c in chevaux:
+            assert c["cote"] is not None
+            assert c["proba_implicite_cote"] is not None
+            assert c["value"] is not None
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_post_analyse_existante_sans_force_ne_rappelle_pas_le_llm(monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     store = FakeStore()
