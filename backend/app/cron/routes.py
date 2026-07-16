@@ -17,7 +17,7 @@ from app.config import settings
 from app.pmu_client import fetch_programme
 from app.pmu_normalizer import normalize_programme
 from app.scoring.routes import score_and_persist
-from app.supabase_client import get_supabase_client
+from app.supabase_client import get_supabase_client, new_supabase_client
 
 router = APIRouter()
 
@@ -82,21 +82,31 @@ async def cron_daily(
             for reunion in programme["reunions"]
             for course in reunion["courses"]
         ]
+
+        def _course_job(r: int, c: int) -> tuple[bool, bool, str | None]:
+            """(imported, scored, erreur) pour une course. Tourne dans un thread worker :
+            les écritures Supabase synchrones y parallélisent vraiment (GIL relâché sur l'I/O),
+            et asyncio.run donne à chaque thread sa propre boucle pour les fetchs PMU.
+            Client Supabase dédié au thread (voir new_supabase_client) : le client injecté
+            par Depends est partagé entre threads et son httpx.Client sync n'est pas
+            thread-safe pour des écritures concurrentes (ReadError/EAGAIN aléatoires sinon)."""
+            label = f"R{r}C{c}"
+            thread_client = new_supabase_client()
+            try:
+                res = asyncio.run(import_one_course(thread_client, ddmmyyyy, r, c))
+            except Exception as e:
+                return False, False, f"{label}: {type(e).__name__} {str(e)[:80]}"
+            try:
+                score_and_persist(thread_client, res["course_id"])
+            except Exception as e:
+                return True, False, f"{label}: {type(e).__name__} {str(e)[:80]}"
+            return True, True, None
+
         sem = asyncio.Semaphore(IMPORT_CONCURRENCY)
 
         async def _one(r: int, c: int) -> tuple[bool, bool, str | None]:
-            """(imported, scored, erreur) pour une course ; jamais d'exception."""
-            label = f"R{r}C{c}"
             async with sem:
-                try:
-                    res = await import_one_course(client, ddmmyyyy, r, c)
-                except Exception as e:
-                    return False, False, f"{label}: {str(e)[:80]}"
-                try:
-                    score_and_persist(client, res["course_id"])
-                except Exception as e:
-                    return True, False, f"{label}: {str(e)[:80]}"
-                return True, True, None
+                return await asyncio.to_thread(_course_job, r, c)
 
         results = await asyncio.gather(*(_one(r, c) for r, c in todo))
         for ok_imp, ok_score, err in results:
