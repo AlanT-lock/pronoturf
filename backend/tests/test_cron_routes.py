@@ -103,6 +103,36 @@ def test_cron_import_score_du_jour_et_erreurs_absorbees(monkeypatch):
         app.dependency_overrides.clear()
 
 
+def test_cron_import_concurrent_compte_toutes_les_courses(monkeypatch):
+    store = FakeStore()
+    programme = {"programme": {"reunions": [
+        {"numOfficiel": 1, "pays": {"code": "FRA"},
+         "hippodrome": {"code": "X", "libelleCourt": "TEST"},
+         "courses": [
+             {"numOrdre": 1, "discipline": "PLAT", "distance": 1200, "montantPrix": 1000,
+              "heureDepart": 1784264400000, "nombreDeclaresPartants": 5, "paris": []},
+             {"numOrdre": 2, "discipline": "PLAT", "distance": 1200, "montantPrix": 1000,
+              "heureDepart": 1784264400000, "nombreDeclaresPartants": 5, "paris": []},
+             {"numOrdre": 3, "discipline": "PLAT", "distance": 1200, "montantPrix": 1000,
+              "heureDepart": 1784264400000, "nombreDeclaresPartants": 5, "paris": []},
+         ]},
+    ]}}
+    _setup(monkeypatch, store, programme=programme)
+
+    async def fake_import(client, d, r, c):
+        return {"course_id": f"course-{c}", "partant_ids": []}
+
+    import app.main as main
+    monkeypatch.setattr(main, "import_one_course", fake_import)
+    monkeypatch.setattr(cr, "score_and_persist", lambda client, cid: [])
+    try:
+        body = TestClient(app).get("/cron/daily", headers=BEARER).json()
+        assert body["imported"] == 3 and body["scored"] == 3
+        assert body["errors"] == []
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_cron_score_echoue_apres_import_reussi(monkeypatch):
     store = FakeStore()
     programme = {"programme": {"reunions": [

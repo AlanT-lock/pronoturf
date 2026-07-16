@@ -5,6 +5,7 @@ Chaque course est traitée sous try/except : une erreur PMU (course purgée, ré
 est comptée dans `errors`, jamais fatale au run.
 """
 
+import asyncio
 import secrets
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -21,6 +22,7 @@ from app.supabase_client import get_supabase_client
 router = APIRouter()
 
 CAPTURE_WINDOW_DAYS = 7
+IMPORT_CONCURRENCY = 6
 
 
 def _today_paris() -> date:
@@ -75,18 +77,33 @@ async def cron_daily(
     ddmmyyyy = today.strftime("%d%m%Y")
     try:
         programme = normalize_programme(await fetch_programme(ddmmyyyy))
-        for reunion in programme["reunions"]:
-            for course in reunion["courses"]:
-                label = f"R{reunion['numero_reunion']}C{course['numero_course']}"
+        todo = [
+            (reunion["numero_reunion"], course["numero_course"])
+            for reunion in programme["reunions"]
+            for course in reunion["courses"]
+        ]
+        sem = asyncio.Semaphore(IMPORT_CONCURRENCY)
+
+        async def _one(r: int, c: int) -> tuple[bool, bool, str | None]:
+            """(imported, scored, erreur) pour une course ; jamais d'exception."""
+            label = f"R{r}C{c}"
+            async with sem:
                 try:
-                    res = await import_one_course(
-                        client, ddmmyyyy, reunion["numero_reunion"], course["numero_course"]
-                    )
-                    imported += 1
-                    score_and_persist(client, res["course_id"])
-                    scored += 1
+                    res = await import_one_course(client, ddmmyyyy, r, c)
                 except Exception as e:
-                    errors.append(f"{label}: {str(e)[:80]}")
+                    return False, False, f"{label}: {str(e)[:80]}"
+                try:
+                    score_and_persist(client, res["course_id"])
+                except Exception as e:
+                    return True, False, f"{label}: {str(e)[:80]}"
+                return True, True, None
+
+        results = await asyncio.gather(*(_one(r, c) for r, c in todo))
+        for ok_imp, ok_score, err in results:
+            imported += 1 if ok_imp else 0
+            scored += 1 if ok_score else 0
+            if err:
+                errors.append(err)
     except Exception as e:
         errors.append(f"programme: {str(e)[:80]}")
 

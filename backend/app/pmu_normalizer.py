@@ -19,6 +19,7 @@ _DISCIPLINE_MAP = {
     "OBSTACLE": "obstacle",
     "STEEPLE-CHASE": "obstacle",
     "HAIES": "obstacle",
+    "HAIE": "obstacle",
     "CROSS": "obstacle",
 }
 

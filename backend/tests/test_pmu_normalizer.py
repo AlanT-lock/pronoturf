@@ -20,6 +20,15 @@ def test_normalize_course_maps_plat_discipline(pmu_programme_sample):
     assert course.reunion.hippodrome.code_pmu == "DEA"
 
 
+def test_normalize_course_maps_haie_discipline(pmu_programme_sample):
+    # Vu en conditions réelles le 2026-07-14 : discipline "HAIE" (singulier),
+    # distinct du "HAIES" (pluriel) déjà mappé -> KeyError sans l'entrée dédiée.
+    raw_reunion, raw_course = find_course_in_programme(pmu_programme_sample, 1, 1)
+    raw_course = {**raw_course, "discipline": "HAIE"}
+    course = normalize_course(raw_reunion, raw_course)
+    assert course.discipline == "obstacle"
+
+
 def test_normalize_partants_plat_maps_poids_and_cotes(pmu_participants_plat_sample):
     partants = normalize_partants(pmu_participants_plat_sample["participants"], course_terminee=True)
     majnoun = next(p for p in partants if p.nom_cheval == "MAJNOUN")
