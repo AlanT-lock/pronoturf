@@ -9,8 +9,10 @@ Les marqueurs d'année entre parenthèses (ex '(25)') sont ignorés.
 import re
 from typing import Optional
 
+from app.scoring.context_stats import MIN_SAMPLE, SUCCESS_MAX_PLACE
+
 # Un token de perf = un caractère résultat suivi d'une lettre de discipline.
-_PERF_RE = re.compile(r"([0-9DTARdtar])[a-zA-Z]")
+_PERF_RE = re.compile(r"([0-9DTARdtar])([a-zA-Z])")
 
 # Score par place : 1er le meilleur, décroissant ; non-placé/disqualifié = 0.
 _PLACE_SCORE = {1: 1.0, 2: 0.85, 3: 0.70, 4: 0.55, 5: 0.45, 6: 0.35, 7: 0.25, 8: 0.15, 9: 0.10}
@@ -42,3 +44,38 @@ def forme_score(musique: Optional[str], n: int = 5) -> float:
         per_race = _PLACE_SCORE.get(place, 0.0) if place is not None else 0.0
         score += per_race * weight
     return score / total_weight
+
+
+# Lettre de discipline de la musique -> discipline de scoring. Lettre inconnue -> None.
+_DISCIPLINE_LETTRE = {
+    "a": "trot_attele", "m": "trot_monte", "p": "plat",
+    "h": "obstacle", "s": "obstacle", "c": "obstacle", "o": "obstacle",
+}
+
+
+def parse_musique_disciplines(musique: Optional[str]) -> list[tuple[Optional[int], Optional[str]]]:
+    """Comme parse_musique, mais conserve la discipline de chaque course passée."""
+    if not musique:
+        return []
+    cleaned = re.sub(r"\([^)]*\)", "", musique)
+    out: list[tuple[Optional[int], Optional[str]]] = []
+    for match in _PERF_RE.finditer(cleaned):
+        result = match.group(1).upper()
+        place = int(result) if result.isdigit() and result != "0" else None
+        out.append((place, _DISCIPLINE_LETTRE.get(match.group(2).lower())))
+    return out
+
+
+def taux_discipline_musique(musique: Optional[str], discipline: Optional[str]) -> Optional[float]:
+    """Taux de top-3 sur les courses de la musique courues dans `discipline`.
+
+    Mêmes règles que context_stats : None si < MIN_SAMPLE courses dans la discipline ;
+    DNF (place None) compte au dénominateur, pas au numérateur.
+    """
+    if discipline is None:
+        return None  # sans cette garde, d == discipline matcherait les lettres inconnues
+    places = [p for p, d in parse_musique_disciplines(musique) if d == discipline]
+    if len(places) < MIN_SAMPLE:
+        return None
+    succes = sum(1 for p in places if p is not None and p <= SUCCESS_MAX_PLACE)
+    return succes / len(places)
