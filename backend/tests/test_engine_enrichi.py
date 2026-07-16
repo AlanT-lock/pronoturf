@@ -30,9 +30,11 @@ def test_score_course_weights_still_sum_to_one():
 
 
 def test_no_history_horse_weights_sum_to_one_over_base_factors_only():
-    # Un cheval sans historique ne doit contenir QUE les 5 facteurs de base (pas de bloc 0.5),
-    # et leurs poids doivent être redistribués pour sommer à 1 -> pas de dilution.
+    # Un cheval sans historique de perfs n'a que les 5 facteurs de base + taux_discipline
+    # (celui-ci vient désormais de la musique "1p1p1p", 3 courses plat toutes top-3), et
+    # les poids doivent être redistribués pour sommer à 1 -> pas de dilution.
     rows = score_course([_partant(1, nb_perfs=0)], "plat", DEFAULT_PONDERATIONS["plat"], CTX)
     details = rows[0]["details_facteurs"]
-    assert set(details.keys()) == {"forme", "taux_reussite", "ferrage_poids", "cote", "corde"}
+    assert set(details.keys()) == {"forme", "taux_reussite", "ferrage_poids", "cote", "corde",
+                                    "taux_discipline"}
     assert abs(sum(d["poids_effectif"] for d in details.values()) - 1.0) < 1e-9

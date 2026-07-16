@@ -9,7 +9,7 @@ facteurs présents), tandis que cote/corde/poids restent relatifs à la course (
 """
 
 from app.scoring import context_stats as cs
-from app.scoring.musique import forme_score
+from app.scoring.musique import forme_score, taux_discipline_musique
 
 # Score de déferrage (trot) : plus déferré = léger avantage supposé.
 _FERRAGE_SCORE = {
@@ -90,7 +90,7 @@ def compute_factors(partants: list[dict], discipline: str, course_context: dict)
         td = cs.taux_distance(perfs, dist)
         if td is not None:
             f["taux_distance"] = td
-        tdi = cs.taux_discipline(perfs, discipline)
+        tdi = taux_discipline_musique(p.get("musique"), discipline)
         if tdi is not None:
             f["taux_discipline"] = tdi
         tn = cs.taux_niveau(perfs, allocation)

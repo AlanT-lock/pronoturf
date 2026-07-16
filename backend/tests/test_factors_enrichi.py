@@ -9,9 +9,10 @@ def _perf(place, distance_m=1400, discipline="plat", allocation=20000, hippodrom
             "allocation": allocation, "hippodrome": hippodrome}
 
 
-def _partant(corde, place_corde=None, perfs=None, jockey_taux=None, entraineur_taux=None):
+def _partant(corde, place_corde=None, perfs=None, jockey_taux=None, entraineur_taux=None,
+             musique="1p2p3p"):
     return {"numero_corde": corde, "statut": "partant", "cote_valeur": 5.0, "poids_kg": 56.0,
-            "musique": "1p2p3p", "nombre_courses": 10, "nombre_victoires": 3, "nombre_places": 4,
+            "musique": musique, "nombre_courses": 10, "nombre_victoires": 3, "nombre_places": 4,
             "place_corde": place_corde, "performances": perfs or [], "ferrage": None,
             "jockey_taux": jockey_taux, "entraineur_taux": entraineur_taux}
 
@@ -27,7 +28,7 @@ def test_new_factors_present_and_bounded():
 
 
 def test_no_data_factors_are_omitted_not_neutral():
-    factors = compute_factors([_partant(1, perfs=[])], "plat", CTX)
+    factors = compute_factors([_partant(1, perfs=[], musique="1p2p")], "plat", CTX)
     f = factors[1]
     # les 6 facteurs dépendant de données sont ABSENTS (pas présents à 0.5)
     for key in ("taux_distance", "taux_discipline", "taux_niveau", "taux_hippodrome", "jockey", "entraineur"):
@@ -51,3 +52,12 @@ def test_default_ponderations_sum_to_one_all_disciplines():
     for discipline, poids in DEFAULT_PONDERATIONS.items():
         assert set(poids.keys()) == keys, discipline
         assert abs(sum(poids.values()) - 1.0) < 1e-9, discipline
+
+
+def test_taux_discipline_vient_de_la_musique_sans_perfs():
+    # perfs vides (cas réel PMU ~1 course) mais musique fournie : 1p2p3p = 3 plat, tous top-3.
+    factors = compute_factors([_partant(1, perfs=[])], "plat", CTX)
+    assert factors[1]["taux_discipline"] == 1.0
+    # mauvaise discipline dans la musique -> facteur omis
+    factors = compute_factors([_partant(1, perfs=[], musique="1a2a3a")], "plat", CTX)
+    assert "taux_discipline" not in factors[1]
