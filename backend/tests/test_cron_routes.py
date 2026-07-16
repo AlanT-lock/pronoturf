@@ -103,6 +103,57 @@ def test_cron_import_score_du_jour_et_erreurs_absorbees(monkeypatch):
         app.dependency_overrides.clear()
 
 
+def test_cron_score_echoue_apres_import_reussi(monkeypatch):
+    store = FakeStore()
+    programme = {"programme": {"reunions": [
+        {"numOfficiel": 1, "pays": {"code": "FRA"},
+         "hippodrome": {"code": "X", "libelleCourt": "TEST"},
+         "courses": [
+             {"numOrdre": 1, "discipline": "PLAT", "distance": 1200, "montantPrix": 1000,
+              "heureDepart": 1784264400000, "nombreDeclaresPartants": 5, "paris": []},
+         ]},
+    ]}}
+    _setup(monkeypatch, store, programme=programme)
+
+    async def fake_import(client, d, r, c):
+        return {"course_id": "course-1", "partant_ids": []}
+
+    import app.main as main
+    monkeypatch.setattr(main, "import_one_course", fake_import)
+
+    def boom(client, cid):
+        raise RuntimeError("scoring KO")
+
+    monkeypatch.setattr(cr, "score_and_persist", boom)
+    try:
+        body = TestClient(app).get("/cron/daily", headers=BEARER).json()
+        assert body["imported"] == 1 and body["scored"] == 0
+        assert len(body["errors"]) == 1 and "R1C1" in body["errors"][0]
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_cron_panne_capture_setup_n_abort_pas_le_run(monkeypatch):
+    store = FakeStore()
+    _setup(monkeypatch, store)
+
+    class BoomClient(FakeClient):
+        def table(self, name):
+            if name == "courses":
+                raise RuntimeError("supabase KO")
+            return super().table(name)
+
+    app.dependency_overrides[get_supabase_client] = lambda: BoomClient(store)
+    try:
+        resp = TestClient(app).get("/cron/daily", headers=BEARER)
+        assert resp.status_code == 200  # pas de 500
+        body = resp.json()
+        assert any("capture-setup" in e for e in body["errors"])
+        assert body["imported"] == 0  # programme vide dans _setup -> 0, mais l'étape a tourné
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_cron_snapshot_le_dimanche_seulement(monkeypatch):
     store = FakeStore()
     _setup(monkeypatch, store, today=date(2026, 7, 19))  # un dimanche
