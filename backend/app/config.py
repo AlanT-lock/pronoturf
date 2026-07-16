@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     # Origines CORS autorisées (séparées par des virgules). En prod : URL(s) du frontend.
     cors_origins: str = "http://localhost:3000"
+    # Secret du cron quotidien (Vercel Cron l'envoie en Authorization: Bearer).
+    cron_secret: str | None = None
 
 
 settings = Settings()

@@ -11,6 +11,7 @@ from app.config import settings
 from app.scoring.routes import router as scoring_router
 from app.analyse.routes import router as analyse_router
 from app.backtest.routes import router as backtest_router
+from app.cron.routes import router as cron_router
 from app.supabase_client import get_supabase_client
 from app.supabase_writer import SupabaseWriter
 
@@ -18,6 +19,7 @@ app = FastAPI(title="pronoturf")
 app.include_router(scoring_router)
 app.include_router(analyse_router)
 app.include_router(backtest_router)
+app.include_router(cron_router)
 
 app.add_middleware(
     CORSMiddleware,
