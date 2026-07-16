@@ -30,8 +30,8 @@ def _reunion_of(client, course: dict) -> dict:
     return rows[0]
 
 
-@router.post("/courses/{course_id}/resultats")
-async def capture_resultats(course_id: str, client=Depends(get_supabase_client)) -> dict:
+async def capture_one_resultats(client, course_id: str) -> dict:
+    """Capture l'arrivée réelle d'une course (re-fetch PMU) ; réutilisé par l'endpoint et le cron."""
     course = _get_course_or_404(client, course_id)
     reunion = _reunion_of(client, course)
     ddmmyyyy = _date.fromisoformat(reunion["date"]).strftime("%d%m%Y")
@@ -58,6 +58,11 @@ async def capture_resultats(course_id: str, client=Depends(get_supabase_client))
     n = SupabaseWriter(client).save_resultats(course_id, partants, partant_id_by_corde)
     client.table("courses").update({"statut": "terminee"}).eq("id", course_id).execute()
     return {"course_id": course_id, "captured": True, "statut": "terminee", "nb_resultats": n}
+
+
+@router.post("/courses/{course_id}/resultats")
+async def capture_resultats(course_id: str, client=Depends(get_supabase_client)) -> dict:
+    return await capture_one_resultats(client, course_id)
 
 
 def _corde_by_partant(client, partant_ids: list[str]) -> dict[str, int]:
